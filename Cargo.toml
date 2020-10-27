@@ -14,10 +14,13 @@ path = "src/main.rs"
 #pingr = "src/lib.rs"
 
 [dependencies]
-wifi = "0.1.0"
+#wifi = "0.1.0"
 #wifilocation = "0.3"
-sysbar = "0.2.0"
+#sysbar = "0.2.0"
 libc = "0.2"
+
+# Keen API integration
+# https://github.com/dovahcrow/keenio-rs
 #keen = "1.4.1"
 
 [build-dependencies]
