@@ -1,4 +1,4 @@
-const MIN_LIBOPING_VERSION: &str = "1.10.0";
+const MIN_LIBOPING_VERSION: &str = "1.9.0";
 
 fn main() {
     // We used to bundle a copy of liboping and try to build it automatically,
