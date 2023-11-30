@@ -1,6 +1,6 @@
 [workspace]
-members = ["monitor"]
-default-members = ["monitor"]
+members = ["wimon"]
+default-members = ["wimon"]
 resolver = "2"
 
 [workspace.package]
