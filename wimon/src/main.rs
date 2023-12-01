@@ -4,61 +4,95 @@ use std::path::PathBuf;
 use std::time::Duration;
 use mac_address::get_mac_address;
 
+// put under option
+use serde_derive::{Serialize, Deserialize};
+
 const CONFIG_FILE_NAME: &str = "wimon.toml";
 
+#[derive(Serialize, Deserialize, Clone)]
 enum DeviceId {
     MAC([u8;6])
 }
 
-enum SSIDMonitorSpec {
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+enum MonitorSpec {
     /// Report status of all SSIDs that are detected at each monitoring moment
     All,
-    /// Only report on the status of the SSID that is used to provide the internet connection
+    /// Only report on the status of the connection (wifi or ethernet) used to send results
     Connection,
     /// Monitor a specific list of supplied SSIDs by name
-    SSIDList(Vec<String>)
+    SSIDs(Vec<String>)
 }
 
-impl Default for SSIDMonitorSpec {
+impl Default for MonitorSpec {
     fn default() -> Self {
-        SSIDMonitorSpec::Connection
+        MonitorSpec::Connection
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 struct Config {
-    ssid_monitor_spec: SSIDMonitorSpec
+    monitor_spec: MonitorSpec
 }
 
 impl Display for DeviceId {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            DeviceId::MAC(mac) => writeln!(f, "MAC({:?})", mac)
+            DeviceId::MAC(mac) => write!(f, "MAC({:?})", mac)
         }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct Stats {
+    power_percent: u8
+}
+
+#[derive(Serialize, Deserialize)]
+struct SSIDReport {
+    ssid: String,
+    stats: Option<Stats>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct MonitorReport {
+    device_id: DeviceId,
+    local_time: Option<String>,
+    ssids: Vec<SSIDReport>,
+}
+
+impl Display for MonitorReport {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "\tDeviceId = {}", self.device_id)
     }
 }
 
 fn main() -> Result<(), io::Error> {
     let config_file_path = find_config_file(CONFIG_FILE_NAME)?;
-    println!("Config file found at {}", config_file_path.display());
-    let config = read_config(config_file_path)?;
-
+    let config = read_config(&config_file_path)?;
+    println!("Config file loaded from: \"{}\"", config_file_path.display());
+    println!("Monitor: {:?}", config.monitor_spec);
     let device_id = get_device_id()?;
-    println!("Device ID = {device_id}");
 
-    monitor_loop(config)?;
+    monitor_loop(config, device_id)?;
 
     Ok(())
 }
 
-fn monitor_loop(_config: Config) -> Result<(), io::Error> {
+fn monitor_loop(_config: Config, device_id: DeviceId) -> Result<(), io::Error> {
     loop {
-        std::thread::sleep(Duration::from_secs(10));
+        let report = MonitorReport {
+            device_id: device_id.clone(),
+            local_time: None,
+            ssids: vec![]
+        };
 
-        println!("Alive");
+        println!("Report: \n{report}");
+
+        std::thread::sleep(Duration::from_secs(10));
     }
 
-    Ok(())
+    //Ok(())
 }
 
 fn get_device_id() -> Result<DeviceId, io::Error> {
@@ -85,6 +119,46 @@ fn find_config_file(file_name: &str) -> Result<PathBuf, io::Error> {
                         "wimon toml config file not found"))
 }
 
-fn read_config(_config_file_path: PathBuf) -> Result<Config, io::Error> {
-    Ok(Config::default())
+fn read_config(config_file_path: &PathBuf) -> Result<Config, io::Error> {
+    let config_string = std::fs::read_to_string(config_file_path)?;
+    let config : Config = toml::from_str(&config_string).map_err(|_|
+        io::Error::new(io::ErrorKind::NotFound,
+                       "Could not parse toml config file"))?;
+    Ok(config)
+}
+
+#[cfg(test)]
+mod test {
+    use std::path::PathBuf;
+    use crate::{Config, CONFIG_FILE_NAME, MonitorSpec};
+
+    #[test]
+    fn default_config_toml() {
+        let config = Config::default();
+        assert_eq!(toml::to_string(&config).unwrap(), "monitor_spec = \"Connection\"\n");
+    }
+
+    #[test]
+    fn bundled_spec() {
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let root_dir = manifest_dir.parent().ok_or("Could not get parent dir")
+            .expect("Could not get parent dir");
+        let config_string = std::fs::read_to_string(root_dir.join(CONFIG_FILE_NAME))
+            .unwrap();
+        let config: Config = toml::from_str(&config_string).unwrap();
+        assert_eq!(config.monitor_spec, MonitorSpec::Connection);
+    }
+
+    #[test]
+    fn config_all() {
+        let config: Config = toml::from_str("monitor_spec=\"All\"\n").unwrap();
+        assert_eq!(config.monitor_spec, MonitorSpec::All)
+    }
+
+    #[test]
+    fn config_ssids() {
+        let config: Config = toml::from_str("[monitor_spec]\nSSIDs=['ABC', 'DEF']\n").unwrap();
+        let ssid_list = MonitorSpec::SSIDs(vec!["ABC".to_owned(), "DEF".to_owned()]);
+        assert_eq!(config.monitor_spec, ssid_list)
+    }
 }
