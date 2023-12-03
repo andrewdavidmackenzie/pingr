@@ -32,6 +32,7 @@ impl Default for MonitorSpec {
 
 #[derive(Default, Serialize, Deserialize)]
 struct Config {
+    #[serde(rename="monitor")]
     monitor_spec: MonitorSpec
 }
 
@@ -49,7 +50,7 @@ struct Stats {
 }
 
 #[derive(Serialize, Deserialize)]
-struct SSIDReport {
+struct ConnectionReport {
     ssid: String,
     stats: Option<Stats>,
 }
@@ -58,7 +59,7 @@ struct SSIDReport {
 struct MonitorReport {
     device_id: DeviceId,
     local_time: Option<String>,
-    ssids: Vec<SSIDReport>,
+    connections: Vec<ConnectionReport>,
 }
 
 impl Display for MonitorReport {
@@ -84,7 +85,7 @@ fn monitor_loop(_config: Config, device_id: DeviceId) -> Result<(), io::Error> {
         let report = MonitorReport {
             device_id: device_id.clone(),
             local_time: None,
-            ssids: vec![]
+            connections: vec![]
         };
 
         println!("Report: \n{report}");
@@ -135,7 +136,7 @@ mod test {
     #[test]
     fn default_config_toml() {
         let config = Config::default();
-        assert_eq!(toml::to_string(&config).unwrap(), "monitor_spec = \"Connection\"\n");
+        assert_eq!(toml::to_string(&config).unwrap(), "monitor = \"Connection\"\n");
     }
 
     #[test]
@@ -151,13 +152,13 @@ mod test {
 
     #[test]
     fn config_all() {
-        let config: Config = toml::from_str("monitor_spec=\"All\"\n").unwrap();
+        let config: Config = toml::from_str("monitor=\"All\"\n").unwrap();
         assert_eq!(config.monitor_spec, MonitorSpec::All)
     }
 
     #[test]
     fn config_ssids() {
-        let config: Config = toml::from_str("[monitor_spec]\nSSIDs=['ABC', 'DEF']\n").unwrap();
+        let config: Config = toml::from_str("[monitor]\nSSIDs=['ABC', 'DEF']\n").unwrap();
         let ssid_list = MonitorSpec::SSIDs(vec!["ABC".to_owned(), "DEF".to_owned()]);
         assert_eq!(config.monitor_spec, ssid_list)
     }
