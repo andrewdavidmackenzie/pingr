@@ -30,10 +30,17 @@ impl Default for MonitorSpec {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+struct ReportSpec {
+    period: Option<String>,
+}
+
 #[derive(Default, Serialize, Deserialize)]
 struct Config {
     #[serde(rename="monitor")]
-    monitor_spec: MonitorSpec
+    monitor_spec: Option<MonitorSpec>,
+    #[serde(rename="report")]
+    report_spec: Option<ReportSpec>,
 }
 
 impl Display for DeviceId {
@@ -134,9 +141,22 @@ mod test {
     use crate::{Config, CONFIG_FILE_NAME, MonitorSpec};
 
     #[test]
-    fn default_config_toml() {
-        let config = Config::default();
-        assert_eq!(toml::to_string(&config).unwrap(), "monitor = \"Connection\"\n");
+    fn config_monitor_connection() {
+        let config: Config = toml::from_str("monitor = \"Connection\"\n").unwrap();
+        assert_eq!(config.monitor_spec, Some(MonitorSpec::Connection));
+    }
+
+    #[test]
+    fn config_monitor_all() {
+        let config: Config = toml::from_str("monitor=\"All\"\n").unwrap();
+        assert_eq!(config.monitor_spec, Some(MonitorSpec::All))
+    }
+
+    #[test]
+    fn config_monitor_ssids() {
+        let config: Config = toml::from_str("[monitor]\nSSIDs=['ABC', 'DEF']\n").unwrap();
+        let ssid_list = MonitorSpec::SSIDs(vec!["ABC".to_owned(), "DEF".to_owned()]);
+        assert_eq!(config.monitor_spec, Some(ssid_list))
     }
 
     #[test]
@@ -147,19 +167,13 @@ mod test {
         let config_string = std::fs::read_to_string(root_dir.join(CONFIG_FILE_NAME))
             .unwrap();
         let config: Config = toml::from_str(&config_string).unwrap();
-        assert_eq!(config.monitor_spec, MonitorSpec::Connection);
+        assert_eq!(config.monitor_spec, Some(MonitorSpec::Connection));
+        assert_eq!(config.report_spec.unwrap().period, Some("1m".to_owned()));
     }
 
     #[test]
-    fn config_all() {
-        let config: Config = toml::from_str("monitor=\"All\"\n").unwrap();
-        assert_eq!(config.monitor_spec, MonitorSpec::All)
-    }
-
-    #[test]
-    fn config_ssids() {
-        let config: Config = toml::from_str("[monitor]\nSSIDs=['ABC', 'DEF']\n").unwrap();
-        let ssid_list = MonitorSpec::SSIDs(vec!["ABC".to_owned(), "DEF".to_owned()]);
-        assert_eq!(config.monitor_spec, ssid_list)
+    fn config_with_report_spec() {
+        let config: Config = toml::from_str("[report]\nperiod = \"1s\"\n").unwrap();
+        assert_eq!(config.report_spec.unwrap().period, Some("1s".to_owned()));
     }
 }
