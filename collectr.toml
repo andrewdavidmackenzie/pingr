@@ -1,0 +1,2 @@
+downtime_threashold_seconds = "180"
+alert_on = ["down", "up"]

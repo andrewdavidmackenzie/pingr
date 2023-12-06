@@ -1,5 +1,5 @@
 [workspace]
-members = ["wimon"]
+members = ["wimon", "collectr"]
 default-members = ["wimon"]
 resolver = "2"
 
@@ -11,3 +11,7 @@ license-file = "LICENSE"
 repository = "https://github.com/andrewdavidmackenzie/pingr/"
 readme = "README.md"
 edition = "2021"
+
+[profile.release]
+# Tell `rustc` to optimize for small code size.
+opt-level = "s"
