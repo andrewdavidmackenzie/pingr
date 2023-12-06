@@ -1,4 +1,4 @@
 monitor= "Connection"
 
 [report]
-period = "1m"
+period_seconds = "60"

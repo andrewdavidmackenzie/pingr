@@ -1,5 +1,4 @@
 use std::{env, io};
-use std::fmt::{Display, Formatter};
 use std::path::PathBuf;
 use std::time::Duration;
 use mac_address::get_mac_address;
@@ -7,12 +6,9 @@ use mac_address::get_mac_address;
 // put under option
 use serde_derive::{Serialize, Deserialize};
 
-const CONFIG_FILE_NAME: &str = "wimon.toml";
+use data_model::{DeviceId, MonitorReport};
 
-#[derive(Serialize, Deserialize, Clone)]
-enum DeviceId {
-    MAC([u8;6])
-}
+const CONFIG_FILE_NAME: &str = "wimon.toml";
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 enum MonitorSpec {
@@ -32,7 +28,7 @@ impl Default for MonitorSpec {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct ReportSpec {
-    period: Option<String>,
+    period_seconds: Option<String>,
 }
 
 #[derive(Default, Serialize, Deserialize)]
@@ -41,38 +37,8 @@ struct Config {
     monitor_spec: Option<MonitorSpec>,
     #[serde(rename="report")]
     report_spec: Option<ReportSpec>,
-}
-
-impl Display for DeviceId {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            DeviceId::MAC(mac) => write!(f, "MAC({:?})", mac)
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-struct Stats {
-    power_percent: u8
-}
-
-#[derive(Serialize, Deserialize)]
-struct ConnectionReport {
-    ssid: String,
-    stats: Option<Stats>,
-}
-
-#[derive(Serialize, Deserialize)]
-struct MonitorReport {
-    device_id: DeviceId,
-    local_time: Option<String>,
-    connections: Vec<ConnectionReport>,
-}
-
-impl Display for MonitorReport {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "\tDeviceId = {}", self.device_id)
-    }
+    #[serde(skip)]
+    period_duration: Duration,
 }
 
 fn main() -> Result<(), io::Error> {
@@ -87,7 +53,7 @@ fn main() -> Result<(), io::Error> {
     Ok(())
 }
 
-fn monitor_loop(_config: Config, device_id: DeviceId) -> Result<(), io::Error> {
+fn monitor_loop(config: Config, device_id: DeviceId) -> Result<(), io::Error> {
     loop {
         let report = MonitorReport {
             device_id: device_id.clone(),
@@ -97,7 +63,7 @@ fn monitor_loop(_config: Config, device_id: DeviceId) -> Result<(), io::Error> {
 
         println!("Report: \n{report}");
 
-        std::thread::sleep(Duration::from_secs(10));
+        std::thread::sleep(config.period_duration);
     }
 
     //Ok(())
@@ -129,9 +95,26 @@ fn find_config_file(file_name: &str) -> Result<PathBuf, io::Error> {
 
 fn read_config(config_file_path: &PathBuf) -> Result<Config, io::Error> {
     let config_string = std::fs::read_to_string(config_file_path)?;
-    let config : Config = toml::from_str(&config_string).map_err(|_|
+    let mut config : Config = toml::from_str(&config_string).map_err(|_|
         io::Error::new(io::ErrorKind::NotFound,
                        "Could not parse toml config file"))?;
+
+    match &config.report_spec {
+        Some(spec) => {
+            match &spec.period_seconds {
+                None => config.period_duration = Duration::from_secs(60),
+                Some(period) => {
+                    match period.parse::<u64>() {
+                        Ok(duration) => config.period_duration = Duration::from_secs(duration),
+                        Err(_) => return Err(io::Error::new(io::ErrorKind::InvalidInput,
+                        "Could not parse period_seconds String to an integer number of seconds".to_owned()))
+                    }
+                }
+            }
+        },
+        None => config.period_duration = Duration::from_secs(60)
+    }
+
     Ok(config)
 }
 
@@ -168,12 +151,12 @@ mod test {
             .unwrap();
         let config: Config = toml::from_str(&config_string).unwrap();
         assert_eq!(config.monitor_spec, Some(MonitorSpec::Connection));
-        assert_eq!(config.report_spec.unwrap().period, Some("1m".to_owned()));
+        assert_eq!(config.report_spec.unwrap().period_seconds, Some("60".to_owned()));
     }
 
     #[test]
     fn config_with_report_spec() {
-        let config: Config = toml::from_str("[report]\nperiod = \"1s\"\n").unwrap();
-        assert_eq!(config.report_spec.unwrap().period, Some("1s".to_owned()));
+        let config: Config = toml::from_str("[report]\nperiod_seconds = \"1\"\n").unwrap();
+        assert_eq!(config.report_spec.unwrap().period_seconds, Some("1".to_owned()));
     }
 }
