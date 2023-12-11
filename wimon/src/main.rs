@@ -2,6 +2,8 @@ use std::{env, io};
 use std::path::PathBuf;
 use std::time::Duration;
 use mac_address::get_mac_address;
+use url::Url;
+use serde_json::json;
 
 // put under option
 use serde_derive::{Serialize, Deserialize};
@@ -29,6 +31,8 @@ impl Default for MonitorSpec {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct ReportSpec {
     period_seconds: Option<String>,
+    #[serde(rename="url")]
+    report_url: Option<String>,
 }
 
 #[derive(Default, Serialize, Deserialize)]
@@ -39,6 +43,8 @@ struct Config {
     report_spec: Option<ReportSpec>,
     #[serde(skip)]
     period_duration: Duration,
+    #[serde(skip)]
+    report_url: Option<Url>,
 }
 
 fn main() -> Result<(), io::Error> {
@@ -61,12 +67,21 @@ fn monitor_loop(config: Config, device_id: DeviceId) -> Result<(), io::Error> {
             connections: vec![]
         };
 
-        println!("Report: \n{report}");
+        if let Some(report_url) = &config.report_url {
+            remote_report(&report_url, &report);
+        } else {
+            println!("Local Status: \n{report}");
+        }
 
         std::thread::sleep(config.period_duration);
     }
 
     //Ok(())
+}
+
+fn remote_report(report_url: &Url, report: &MonitorReport) {
+    println!("Sending Report to: {report_url}:");
+    println!("{}", json!(report));
 }
 
 fn get_device_id() -> Result<DeviceId, io::Error> {
@@ -75,6 +90,7 @@ fn get_device_id() -> Result<DeviceId, io::Error> {
         _ => Err(io::Error::new(io::ErrorKind::NotFound, "DeviceId could not be determined"))
     }
 }
+
 fn find_config_file(file_name: &str) -> Result<PathBuf, io::Error> {
     let mut dir = env::current_dir().ok();
 
@@ -114,6 +130,16 @@ fn read_config(config_file_path: &PathBuf) -> Result<Config, io::Error> {
         },
         None => config.period_duration = Duration::from_secs(60)
     }
+
+    config.report_url = match &config.report_spec {
+        Some(spec) => {
+            match &spec.report_url {
+                Some(url_string) => Url::parse(url_string).ok(),
+                None => None,
+            }
+        },
+        None => None,
+    };
 
     Ok(config)
 }

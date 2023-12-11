@@ -30,7 +30,9 @@ pub struct ConnectionReport {
 #[derive(Serialize, Deserialize)]
 pub struct MonitorReport {
     pub device_id: DeviceId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub local_time: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub connections: Vec<ConnectionReport>,
 }
 

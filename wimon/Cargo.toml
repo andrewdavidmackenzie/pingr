@@ -13,4 +13,6 @@ mac_address = "1.1.5"
 # for reading config from a file - put under a flag for embedded options
 serde_derive = "~1.0"
 serde = "~1.0"
+serde_json = "1.0.107"
 toml = { version = "0.8.8" }
+url = "2.2"
