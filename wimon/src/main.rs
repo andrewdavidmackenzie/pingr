@@ -4,6 +4,8 @@ use std::time::Duration;
 use mac_address::get_mac_address;
 use url::Url;
 use serde_json::json;
+use std::io::Read;
+use curl::easy::Easy;
 
 // put under option
 use serde_derive::{Serialize, Deserialize};
@@ -80,8 +82,20 @@ fn monitor_loop(config: Config, device_id: DeviceId) -> Result<(), io::Error> {
 }
 
 fn remote_report(report_url: &Url, report: &MonitorReport) {
-    println!("Sending Report to: {report_url}:");
-    println!("{}", json!(report));
+    let json_string = format!("report={}", json!(report).to_string());
+    let mut post_data = json_string.as_bytes();
+    let mut easy = Easy::new();
+    easy.url(report_url.join("report").unwrap().as_str()).unwrap();
+    easy.post(true).unwrap();
+    easy.post_fields_copy(post_data).unwrap();
+    easy.post_field_size(post_data.len() as u64).unwrap();
+    let mut transfer = easy.transfer();
+    transfer.read_function(|buf| { Ok(post_data.read(buf).unwrap_or(0)) }).unwrap();
+
+    match transfer.perform() {
+        Ok(_) => println!("Report sent to: {report_url}"),
+        Err(_) => eprintln!("Error reporting to '{}': skipping report", report_url.as_str()),
+    }
 }
 
 fn get_device_id() -> Result<DeviceId, io::Error> {

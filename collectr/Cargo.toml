@@ -11,9 +11,11 @@ wasm-opt = false
 crate-type = ["cdylib"]
 
 [dependencies]
+data_model = { path = "../data_model"}
 worker = "0.0.15"
 serde_derive = "~1.0"
 serde = "~1.0"
+serde_json = "1.0.107"
 
 [profile.release]
 lto = true
