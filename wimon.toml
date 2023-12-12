@@ -2,4 +2,5 @@ monitor= "Connection"
 
 [report]
 period_seconds = "60"
-url = "http://localhost:8787"
+#url = "http://localhost:8787"
+url = "https://worker-rust.mackenzie-serres.workers.dev"
