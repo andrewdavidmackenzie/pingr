@@ -17,7 +17,8 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
                         let report_json : serde_json::Result<MonitorReport> = serde_json::from_str(&report_string);
                         match report_json {
                             Ok(report) => {
-                                console_debug!("Report from Device: {}", report.device_id);
+                                console_debug!("Received {:?} report from Device: {}",
+                                    report.report_type, report.device_id);
                                 Response::ok("OK - Report Accepted")
                             }
                             Err(e) => {

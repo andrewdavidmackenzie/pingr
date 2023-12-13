@@ -10,7 +10,8 @@ use curl::easy::Easy;
 // put under option
 use serde_derive::{Serialize, Deserialize};
 
-use data_model::{DeviceId, MonitorReport};
+use data_model::{DeviceId, MonitorReport, ReportType};
+use data_model::ReportType::OnGoing;
 
 const CONFIG_FILE_NAME: &str = "wimon.toml";
 
@@ -62,40 +63,44 @@ fn main() -> Result<(), io::Error> {
 }
 
 fn monitor_loop(config: Config, device_id: DeviceId) -> Result<(), io::Error> {
+    let mut report_type = ReportType::Start;
+
     loop {
         let report = MonitorReport {
+            report_type,
             device_id: device_id.clone(),
             local_time: None,
             connections: vec![]
         };
 
-        if let Some(report_url) = &config.report_url {
-            remote_report(&report_url, &report);
+        if let Some(Ok(report_url)) = config.report_url.as_ref()
+            .map(|p| p.join("report")) {
+            match send_report(&report_url, &report) {
+                Ok(_) => println!("Sent {:?} report to: {report_url}", report.report_type),
+                Err(_) => eprintln!("Error reporting to '{}': skipping report", report_url.as_str()),
+            }
         } else {
             println!("Local Status: \n{report}");
         }
 
         std::thread::sleep(config.period_duration);
+        report_type = OnGoing;
     }
 
     //Ok(())
 }
 
-fn remote_report(report_url: &Url, report: &MonitorReport) {
+fn send_report(report_url: &Url, report: &MonitorReport) -> Result<(), curl::Error> {
     let json_string = format!("report={}", json!(report).to_string());
     let mut post_data = json_string.as_bytes();
     let mut easy = Easy::new();
-    easy.url(report_url.join("report").unwrap().as_str()).unwrap();
-    easy.post(true).unwrap();
-    easy.post_fields_copy(post_data).unwrap();
-    easy.post_field_size(post_data.len() as u64).unwrap();
+    easy.url(report_url.as_str())?;
+    easy.post(true)?;
+    easy.post_fields_copy(post_data)?;
+    easy.post_field_size(post_data.len() as u64)?;
     let mut transfer = easy.transfer();
-    transfer.read_function(|buf| { Ok(post_data.read(buf).unwrap_or(0)) }).unwrap();
-
-    match transfer.perform() {
-        Ok(_) => println!("Report sent to: {report_url}"),
-        Err(_) => eprintln!("Error reporting to '{}': skipping report", report_url.as_str()),
-    }
+    transfer.read_function(|buf| { Ok(post_data.read(buf).unwrap()) })?;
+    transfer.perform()
 }
 
 fn get_device_id() -> Result<DeviceId, io::Error> {

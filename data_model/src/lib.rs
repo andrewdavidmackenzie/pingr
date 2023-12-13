@@ -27,8 +27,16 @@ pub struct ConnectionReport {
     stats: Option<Stats>,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub enum ReportType {
+    Start,
+    Stop,
+    OnGoing
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct MonitorReport {
+    pub report_type: ReportType,
     pub device_id: DeviceId,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub local_time: Option<String>,
