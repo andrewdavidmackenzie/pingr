@@ -1,6 +1,6 @@
 monitor= "Connection"
 
 [report]
-period_seconds = "60"
+period_seconds = 60
 #url = "http://localhost:58756"
 url = "https://collectr.mackenzie-serres.workers.dev"

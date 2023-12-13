@@ -38,6 +38,7 @@ pub enum ReportType {
 pub struct MonitorReport {
     pub report_type: ReportType,
     pub device_id: DeviceId,
+    pub period_seconds: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub local_time: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]

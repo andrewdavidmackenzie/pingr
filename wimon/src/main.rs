@@ -13,6 +13,9 @@ use serde_derive::{Serialize, Deserialize};
 use data_model::{DeviceId, MonitorReport, ReportType};
 use data_model::ReportType::OnGoing;
 
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+
 const CONFIG_FILE_NAME: &str = "wimon.toml";
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -33,7 +36,7 @@ impl Default for MonitorSpec {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct ReportSpec {
-    period_seconds: Option<String>,
+    period_seconds: Option<u64>,
     #[serde(rename="url")]
     report_url: Option<String>,
 }
@@ -55,29 +58,34 @@ fn main() -> Result<(), io::Error> {
     let config = read_config(&config_file_path)?;
     println!("Config file loaded from: \"{}\"", config_file_path.display());
     println!("Monitor: {:?}", config.monitor_spec);
-    let device_id = get_device_id()?;
 
-    monitor_loop(config, device_id)?;
+    let term = Arc::new(AtomicBool::new(false));
+    signal_hook::flag::register(signal_hook::consts::SIGTERM, Arc::clone(&term))?;
+
+    monitor_loop(config, term)?;
 
     Ok(())
 }
 
-fn monitor_loop(config: Config, device_id: DeviceId) -> Result<(), io::Error> {
+fn monitor_loop(config: Config, term: Arc<AtomicBool>) -> Result<(), io::Error> {
     let mut report_type = ReportType::Start;
+    let device_id = get_device_id()?;
+    let report_url = config.report_url.as_ref()
+        .map(|p| p.join("report").unwrap());
 
-    loop {
+    while !term.load(Ordering::Relaxed) {
         let report = MonitorReport {
             report_type,
             device_id: device_id.clone(),
+            period_seconds: config.period_duration.as_secs(),
             local_time: None,
             connections: vec![]
         };
 
-        if let Some(Ok(report_url)) = config.report_url.as_ref()
-            .map(|p| p.join("report")) {
-            match send_report(&report_url, &report) {
-                Ok(_) => println!("Sent {:?} report to: {report_url}", report.report_type),
-                Err(_) => eprintln!("Error reporting to '{}': skipping report", report_url.as_str()),
+        if let Some(url) = &report_url {
+            match send_report(url, &report) {
+                Ok(_) => println!("Sent {:?} report to: {url}", report.report_type),
+                Err(_) => eprintln!("Error reporting to '{}': skipping report", url.as_str()),
             }
         } else {
             println!("Local Status: \n{report}");
@@ -87,7 +95,28 @@ fn monitor_loop(config: Config, device_id: DeviceId) -> Result<(), io::Error> {
         report_type = OnGoing;
     }
 
-    //Ok(())
+    if let Some(url) = &report_url {
+        stop_reporting(url, &device_id)
+    }
+
+    println!("Exiting");
+
+    Ok(())
+}
+
+fn stop_reporting(report_url: &Url, device_id: &DeviceId) {
+    let report = MonitorReport {
+        report_type: ReportType::Stop,
+        device_id: device_id.clone(),
+        period_seconds: 0,
+        local_time: None,
+        connections: vec![]
+    };
+
+    match send_report(report_url, &report) {
+        Ok(_) => println!("Sent {:?} report to: {report_url}", report.report_type),
+        Err(_) => eprintln!("Error reporting to '{}': skipping report", report_url.as_str()),
+    }
 }
 
 fn send_report(report_url: &Url, report: &MonitorReport) -> Result<(), curl::Error> {
@@ -136,15 +165,9 @@ fn read_config(config_file_path: &PathBuf) -> Result<Config, io::Error> {
 
     match &config.report_spec {
         Some(spec) => {
-            match &spec.period_seconds {
-                None => config.period_duration = Duration::from_secs(60),
-                Some(period) => {
-                    match period.parse::<u64>() {
-                        Ok(duration) => config.period_duration = Duration::from_secs(duration),
-                        Err(_) => return Err(io::Error::new(io::ErrorKind::InvalidInput,
-                        "Could not parse period_seconds String to an integer number of seconds".to_owned()))
-                    }
-                }
+            config.period_duration = match spec.period_seconds {
+                None => Duration::from_secs(60),
+                Some(period) => Duration::from_secs(period),
             }
         },
         None => config.period_duration = Duration::from_secs(60)
@@ -196,12 +219,12 @@ mod test {
             .unwrap();
         let config: Config = toml::from_str(&config_string).unwrap();
         assert_eq!(config.monitor_spec, Some(MonitorSpec::Connection));
-        assert_eq!(config.report_spec.unwrap().period_seconds, Some("60".to_owned()));
+        assert_eq!(config.report_spec.unwrap().period_seconds, Some(60));
     }
 
     #[test]
     fn config_with_report_spec() {
-        let config: Config = toml::from_str("[report]\nperiod_seconds = \"1\"\n").unwrap();
-        assert_eq!(config.report_spec.unwrap().period_seconds, Some("1".to_owned()));
+        let config: Config = toml::from_str("[report]\nperiod_seconds = 1\n").unwrap();
+        assert_eq!(config.report_spec.unwrap().period_seconds, Some(1));
     }
 }
