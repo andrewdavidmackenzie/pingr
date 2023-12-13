@@ -12,9 +12,8 @@ use serde_derive::{Serialize, Deserialize};
 
 use data_model::{DeviceId, MonitorReport, ReportType};
 use data_model::ReportType::OnGoing;
-
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use ctrlc;
+use std::sync::mpsc::{channel, Receiver};
 
 const CONFIG_FILE_NAME: &str = "wimon.toml";
 
@@ -59,23 +58,27 @@ fn main() -> Result<(), io::Error> {
     println!("Config file loaded from: \"{}\"", config_file_path.display());
     println!("Monitor: {:?}", config.monitor_spec);
 
-    let term = Arc::new(AtomicBool::new(false));
-    signal_hook::flag::register(signal_hook::consts::SIGTERM, Arc::clone(&term))?;
+    let (tx, rx) = channel();
+    ctrlc::set_handler(move || tx.send(()).expect("Could not send signal on channel."))
+        .expect("Error setting Ctrl-C handler");
 
-    monitor_loop(config, term)?;
+    monitor_loop(config, rx)?;
 
     Ok(())
 }
 
-fn monitor_loop(config: Config, term: Arc<AtomicBool>) -> Result<(), io::Error> {
-    let mut report_type = ReportType::Start;
+fn monitor_loop(config: Config, term_receiver: Receiver<()>) -> Result<(), io::Error> {
     let device_id = get_device_id()?;
     let report_url = config.report_url.as_ref()
         .map(|p| p.join("report").unwrap());
 
-    while !term.load(Ordering::Relaxed) {
+    if let Some(url) = &report_url {
+        start_reporting(url, &device_id)
+    }
+
+    while term_receiver.recv_timeout(config.period_duration).is_err() {
         let report = MonitorReport {
-            report_type,
+            report_type: OnGoing,
             device_id: device_id.clone(),
             period_seconds: config.period_duration.as_secs(),
             local_time: None,
@@ -90,9 +93,6 @@ fn monitor_loop(config: Config, term: Arc<AtomicBool>) -> Result<(), io::Error> 
         } else {
             println!("Local Status: \n{report}");
         }
-
-        std::thread::sleep(config.period_duration);
-        report_type = OnGoing;
     }
 
     if let Some(url) = &report_url {
@@ -102,6 +102,21 @@ fn monitor_loop(config: Config, term: Arc<AtomicBool>) -> Result<(), io::Error> 
     println!("Exiting");
 
     Ok(())
+}
+
+fn start_reporting(report_url: &Url, device_id: &DeviceId) {
+    let report = MonitorReport {
+        report_type: ReportType::Start,
+        device_id: device_id.clone(),
+        period_seconds: 0,
+        local_time: None,
+        connections: vec![]
+    };
+
+    match send_report(report_url, &report) {
+        Ok(_) => println!("Sent {:?} report to: {report_url}", report.report_type),
+        Err(_) => eprintln!("Error reporting to '{}': skipping report", report_url.as_str()),
+    }
 }
 
 fn stop_reporting(report_url: &Url, device_id: &DeviceId) {
