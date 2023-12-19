@@ -2,6 +2,10 @@
 name = "collectr"
 version = "0.1.0"
 edition = "2021"
+description = "CloudFlare worker to accept Monitoring reports from devices running wimon or similar"
+repository.workspace = true
+license.workspace = true
+authors.workspace = true
 
 # https://github.com/rustwasm/wasm-pack/issues/1247
 [package.metadata.wasm-pack.profile.release]
@@ -16,8 +20,3 @@ worker = "0.0.15"
 serde_derive = "~1.0"
 serde = "~1.0"
 serde_json = "1.0.107"
-
-[profile.release]
-lto = true
-strip = true
-codegen-units = 1
