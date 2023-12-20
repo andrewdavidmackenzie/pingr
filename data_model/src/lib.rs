@@ -10,9 +10,7 @@ pub enum DeviceId {
 
 impl Display for DeviceId {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            DeviceId::MAC(mac) => write!(f, "MAC({:?})", mac)
-        }
+        write!(f, "{}", self.to_string())
     }
 }
 
