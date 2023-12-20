@@ -64,6 +64,8 @@ fn main() -> Result<(), io::Error> {
 
     monitor_loop(config, rx)?;
 
+    println!("Exiting");
+
     Ok(())
 }
 
@@ -72,10 +74,13 @@ fn monitor_loop(config: Config, term_receiver: Receiver<()>) -> Result<(), io::E
     let report_url = config.report_url.as_ref()
         .map(|p| p.join("report").unwrap());
 
+    // Tell the server that this device is starting to send reports again
     if let Some(url) = &report_url {
         start_reporting(url, &device_id)
     }
 
+    // A "sleep", interruptible by receiving a message to exit. Normal looping will produce
+    // a timeout error, in which case send the periodic report.
     while term_receiver.recv_timeout(config.period_duration).is_err() {
         let report = MonitorReport {
             report_type: OnGoing,
@@ -95,11 +100,10 @@ fn monitor_loop(config: Config, term_receiver: Receiver<()>) -> Result<(), io::E
         }
     }
 
+    // Tell the server that this device is stopping sending of reports
     if let Some(url) = &report_url {
         stop_reporting(url, &device_id)
     }
-
-    println!("Exiting");
 
     Ok(())
 }
