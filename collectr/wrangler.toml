@@ -1,6 +1,15 @@
 name = "collectr"
 main = "build/worker/shim.mjs"
 compatibility_date = "2023-03-22"
+compatibility_flags = ["durable_object_alarms"]
+
+durable_objects.bindings = [
+    { name = "DEVICES", class_name = "Device" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["Device"]
 
 [build]
 command = "cargo install -q worker-build && worker-build --release"
