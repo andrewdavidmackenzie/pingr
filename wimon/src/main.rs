@@ -72,7 +72,7 @@ fn main() -> Result<(), io::Error> {
 fn monitor_loop(config: Config, term_receiver: Receiver<()>) -> Result<(), io::Error> {
     let device_id = get_device_id()?;
     let report_url = config.report_url.as_ref()
-        .map(|p| p.join("report").unwrap());
+        .map(|p| p.join(&format!("report/{}", &device_id.to_string())).unwrap());
 
     // Tell the server that this device is starting to send reports again
     if let Some(url) = &report_url {
