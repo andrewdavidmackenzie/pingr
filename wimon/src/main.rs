@@ -36,7 +36,7 @@ impl Default for MonitorSpec {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct ReportSpec {
     period_seconds: Option<u64>,
-    #[serde(rename="url")]
+    #[serde(rename="base_url")]
     report_url: Option<String>,
 }
 

@@ -1,6 +1,8 @@
 use worker::*;
 use std::fmt::{Display, Formatter};
 use worker::durable_object;
+use data_model::MonitorReport;
+// use data_model::MonitorReport;
 
 #[derive(Debug)]
 enum DeviceState {
@@ -44,10 +46,9 @@ impl DurableObject for Device {
         }
     }
 
-    async fn fetch(&mut self, req: Request) -> Result<Response> {
-        console_log!("DO got request {} - State is: {}", req.path(), self.device_state);
+    async fn fetch(&mut self, mut req: Request) -> Result<Response> {
+        console_log!("DO got request {} - Previous state: {}", req.path(), self.device_state);
 
-        /*
         let form = req.form_data().await?;
         match form.get("report") {
             Some(report_entry) => match report_entry {
@@ -55,27 +56,25 @@ impl DurableObject for Device {
                     let report_json: serde_json::Result<MonitorReport> = serde_json::from_str(&report_string);
                     match report_json {
                         Ok(report) => {
-                            report.device_id.to_string()
-                        }
+                            console_debug!("Next report expected in: {}s", report.period_seconds);
+                            Response::ok(&format!("Report from: {}", report.device_id.to_string()))
+                        },
                         Err(e) => {
                             console_error!("Could not deserialize report: {e}");
                             console_error!("{}", report_string);
-                            return Response::error("Could not deserialize report", 400);
+                            Response::error("Could not deserialize report", 400)
                         }
                     }
                 },
                 _ => {
                     console_error!("Unexpected File attached to report");
-                    return Response::error("Unexpected File", 400);
+                    Response::error("Unexpected File", 400)
                 }
             }
             _ => {
                 console_error!("Unexpected FormEntry");
-                return Response::error("Unexpected FormEntry", 400);
+                Response::error("Unexpected FormEntry", 400)
             }
         }
-*/
-
-        Response::ok("OK")
     }
 }
