@@ -76,7 +76,7 @@ fn monitor_loop(config: Config, term_receiver: Receiver<()>) -> Result<(), io::E
 
     // Tell the server that this device is starting to send reports again
     if let Some(url) = &report_url {
-        start_reporting(url, &device_id)
+        start_reporting(url)
     }
 
     // A "sleep", interruptible by receiving a message to exit. Normal looping will produce
@@ -84,7 +84,6 @@ fn monitor_loop(config: Config, term_receiver: Receiver<()>) -> Result<(), io::E
     while term_receiver.recv_timeout(config.period_duration).is_err() {
         let report = MonitorReport {
             report_type: OnGoing,
-            device_id: device_id.clone(),
             period_seconds: config.period_duration.as_secs(),
             local_time: None,
             connections: vec![]
@@ -102,16 +101,15 @@ fn monitor_loop(config: Config, term_receiver: Receiver<()>) -> Result<(), io::E
 
     // Tell the server that this device is stopping sending of reports
     if let Some(url) = &report_url {
-        stop_reporting(url, &device_id)
+        stop_reporting(url)
     }
 
     Ok(())
 }
 
-fn start_reporting(report_url: &Url, device_id: &DeviceId) {
+fn start_reporting(report_url: &Url) {
     let report = MonitorReport {
         report_type: ReportType::Start,
-        device_id: device_id.clone(),
         period_seconds: 0,
         local_time: None,
         connections: vec![]
@@ -123,10 +121,9 @@ fn start_reporting(report_url: &Url, device_id: &DeviceId) {
     }
 }
 
-fn stop_reporting(report_url: &Url, device_id: &DeviceId) {
+fn stop_reporting(report_url: &Url) {
     let report = MonitorReport {
         report_type: ReportType::Stop,
-        device_id: device_id.clone(),
         period_seconds: 0,
         local_time: None,
         connections: vec![]
