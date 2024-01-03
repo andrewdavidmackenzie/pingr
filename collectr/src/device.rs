@@ -55,7 +55,6 @@ impl DurableObject for Device {
         self.device_state = self.state.storage().get("device_state").await.unwrap_or(NotReporting);
         console_log!("State: {}", self.device_state);
 
-        console_log!("Event: Report");
         let form = req.form_data().await?;
         match form.get("report") {
             Some(report_entry) => match report_entry {
@@ -80,7 +79,6 @@ impl DurableObject for Device {
         self.device_state = self.state.storage().get("device_state").await.unwrap_or(NotReporting);
         console_log!("State: {}", self.device_state);
 
-        console_log!("Event: Alarm");
         self.process_report(None).await
     }
 }
@@ -92,6 +90,7 @@ impl Device {
         -> Result<Response> {
         match report {
             None => { // report overdue
+                console_log!("Event: Alarm");
                 match &self.device_state {
                     NotReporting => console_warn!("Report overdue with device in NotReporting state"),
                     Reporting => self.new_state(Offline).await?,
@@ -99,6 +98,8 @@ impl Device {
                 }
             },
             Some(rep) => {
+                console_log!("Event: {} Report", rep.report_type);
+
                 match rep.report_type {
                     ReportType::Start => { // Start report
                         if self.device_state == Reporting {
