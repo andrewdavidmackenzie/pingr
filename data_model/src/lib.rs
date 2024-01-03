@@ -22,7 +22,7 @@ pub struct Stats {
 
 #[derive(Serialize, Deserialize)]
 pub struct ConnectionReport {
-    ssid: String,
+    ssid: String, // todo: generalize to include ethernet connections
     stats: Option<Stats>,
 }
 
@@ -47,8 +47,6 @@ impl Display for ReportType {
 pub struct MonitorReport {
     pub report_type: ReportType,
     pub period_seconds: u64,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub local_time: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub connections: Vec<ConnectionReport>,
 }
@@ -58,7 +56,6 @@ impl Default for MonitorReport {
         MonitorReport {
             report_type: ReportType::Start,
             period_seconds: 0,
-            local_time: None,
             connections: vec![],
         }
     }

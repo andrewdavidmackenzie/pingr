@@ -85,7 +85,6 @@ fn monitor_loop(config: Config, term_receiver: Receiver<()>) -> Result<(), io::E
         let report = MonitorReport {
             report_type: OnGoing,
             period_seconds: config.period_duration.as_secs(),
-            local_time: None,
             connections: vec![]
         };
 
@@ -111,7 +110,6 @@ fn start_reporting(report_url: &Url) {
     let report = MonitorReport {
         report_type: ReportType::Start,
         period_seconds: 0,
-        local_time: None,
         connections: vec![]
     };
 
@@ -125,7 +123,6 @@ fn stop_reporting(report_url: &Url) {
     let report = MonitorReport {
         report_type: ReportType::Stop,
         period_seconds: 0,
-        local_time: None,
         connections: vec![]
     };
 
