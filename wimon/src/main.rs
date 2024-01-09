@@ -76,7 +76,7 @@ fn monitor_loop(config: Config, term_receiver: Receiver<()>) -> Result<(), io::E
 
     // Tell the server that this device is starting to send reports again
     if let Some(url) = &report_url {
-        start_reporting(url)
+        start_reporting(url, config.period_duration.as_secs());
     }
 
     // A "sleep", interruptible by receiving a message to exit. Normal looping will produce
@@ -106,10 +106,10 @@ fn monitor_loop(config: Config, term_receiver: Receiver<()>) -> Result<(), io::E
     Ok(())
 }
 
-fn start_reporting(report_url: &Url) {
+fn start_reporting(report_url: &Url, period: u64) {
     let report = MonitorReport {
         report_type: ReportType::Start,
-        period_seconds: 0,
+        period_seconds: period,
         connections: vec![]
     };
 
