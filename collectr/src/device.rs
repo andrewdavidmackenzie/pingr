@@ -93,7 +93,7 @@ impl Device {
                 console_log!("Event: Alarm");
                 match &self.device_state {
                     NotReporting => console_warn!("Report overdue with device in NotReporting state"),
-                    Reporting => self.new_state(Offline).await?,
+                    Reporting => self.new_device_state(Offline).await?,
                     Offline => console_warn!("Report overdue with device in Offline state"),
                 }
             },
@@ -106,21 +106,21 @@ impl Device {
                             console_warn!("Start Report with device in Reporting state");
                         }
                         self.state.storage().set_alarm(((rep.period_seconds + MARGIN_SECONDS) * 1000) as i64).await?;
-                        self.new_state(Reporting).await?;
+                        self.new_device_state(Reporting).await?;
                     },
                     ReportType::OnGoing => { // OnGoing report
                         if self.device_state == NotReporting {
                             console_warn!("OnGoing Report with device in NotReporting state");
                         }
                         self.state.storage().set_alarm(((rep.period_seconds + MARGIN_SECONDS) * 1000) as i64).await?;
-                        self.new_state(Reporting).await?;
+                        self.new_device_state(Reporting).await?;
                     },
                     ReportType::Stop => { // Stop report
                         if self.device_state == NotReporting {
                             console_warn!("Stop Report with device in NotReporting state");
                         }
                         self.state.storage().delete_alarm().await?;
-                        self.new_state(NotReporting).await?;
+                        self.new_device_state(NotReporting).await?;
                     }
                 }
             }
@@ -131,7 +131,7 @@ impl Device {
 
     // change the state of the tracked device to the new state, if it is different from the current state
     // then store the state for use in future instances of this DurableObject
-    async fn new_state(&mut self, new_state: DeviceState) -> Result<()> {
+    async fn new_device_state(&mut self, new_state: DeviceState) -> Result<()> {
         if self.device_state != new_state {
             console_log!("State transition from {} to {}", self.device_state, new_state);
             self.device_state = new_state;
