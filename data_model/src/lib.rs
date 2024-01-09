@@ -21,8 +21,14 @@ pub struct Stats {
 }
 
 #[derive(Serialize, Deserialize)]
+pub enum Connection {
+    SSID(String),
+    Ethernet
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct ConnectionReport {
-    ssid: String, // todo: generalize to include ethernet connections
+    connection: Connection,
     stats: Option<Stats>,
 }
 
