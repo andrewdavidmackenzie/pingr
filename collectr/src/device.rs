@@ -96,7 +96,7 @@ impl Device {
     // Process a new report or an alarm - implementing the state machine, changing to the new state when required
     // and logging console warnings for states that should not happen if everything is working perfectly
     async fn process_report(&mut self, report_type: &str, report: Option<MonitorReport>) -> Result<Response> {
-        console_log!("Event: {} Report", report_type);
+        console_log!("Event: {}", report_type);
 
         match report_type {
             "start" => { // Start report

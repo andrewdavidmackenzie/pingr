@@ -58,7 +58,7 @@ fn main() -> Result<(), io::Error> {
     let config_file_path = find_config_file(CONFIG_FILE_NAME)?;
     let config = read_config(&config_file_path)?;
     println!("Config file loaded from: \"{}\"", config_file_path.display());
-    println!("Monitor: {:?}", config.monitor_spec);
+    println!("Monitor: {:?}", config.monitor_spec.as_ref().unwrap_or(&MonitorSpec::Connection));
 
     let (tx, rx) = channel();
     ctrlc::set_handler(move || {
@@ -99,8 +99,8 @@ fn measure(config: &Config) -> Result<MonitorReport, io::Error> {
     };
 
     #[cfg(feature = "ssids")]
-    match &config.monitor_spec {
-        Some(MonitorSpec::All) => {
+    match &config.monitor_spec.as_ref().unwrap_or(&MonitorSpec::Connection) {
+        MonitorSpec::All => {
             let wifis = wifiscanner::scan().unwrap_or(vec!());
             for wifi in wifis {
                 report.connections.push(
@@ -112,7 +112,7 @@ fn measure(config: &Config) -> Result<MonitorReport, io::Error> {
                 });
             }
         },
-        Some(MonitorSpec::SSIDs(report_ssids)) => {
+        MonitorSpec::SSIDs(report_ssids) => {
             let wifis = wifiscanner::scan().unwrap_or(vec!());
             for wifi in wifis {
                 if report_ssids.contains(&wifi.ssid) {
@@ -127,10 +127,9 @@ fn measure(config: &Config) -> Result<MonitorReport, io::Error> {
             }
 
         },
-        Some(MonitorSpec::Connection) => {
+        MonitorSpec::Connection => {
             // TODO - we need to know which SSID is the one being used and only report that one
-        },
-        None => {}
+        }
     };
 
     Ok(report)
