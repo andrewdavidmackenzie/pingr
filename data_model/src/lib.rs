@@ -15,21 +15,21 @@ impl Display for DeviceId {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Stats {
-    power_percent: u8
+    pub power_dbs: i16
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum Connection {
     SSID(String),
     Ethernet
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ConnectionReport {
-    connection: Connection,
-    stats: Option<Stats>,
+    pub connection: Connection,
+    pub stats: Option<Stats>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -49,9 +49,8 @@ impl Display for ReportType {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct MonitorReport {
-    pub report_type: ReportType,
     pub period_seconds: u64,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub connections: Vec<ConnectionReport>,
@@ -60,7 +59,6 @@ pub struct MonitorReport {
 impl Default for MonitorReport {
     fn default() -> Self {
         MonitorReport {
-            report_type: ReportType::Start,
             period_seconds: 0,
             connections: vec![],
         }
@@ -68,6 +66,6 @@ impl Default for MonitorReport {
 }
 impl Display for MonitorReport {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "\tReportType = {}", self.report_type)
+        write!(f, "\tPeriod (s) = {}", self.period_seconds)
     }
 }

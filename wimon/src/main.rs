@@ -10,12 +10,14 @@ use curl::easy::Easy;
 // put under option
 use serde_derive::{Serialize, Deserialize};
 
-use data_model::{DeviceId, MonitorReport, ReportType};
-use data_model::ReportType::OnGoing;
+use data_model::{Connection, DeviceId, MonitorReport, ReportType, ConnectionReport, Stats};
 use ctrlc;
 use std::sync::mpsc::{channel, Receiver};
 
 const CONFIG_FILE_NAME: &str = "wimon.toml";
+
+#[cfg(feature = "ssids")]
+use wifiscanner;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 enum MonitorSpec {
@@ -59,7 +61,10 @@ fn main() -> Result<(), io::Error> {
     println!("Monitor: {:?}", config.monitor_spec);
 
     let (tx, rx) = channel();
-    ctrlc::set_handler(move || tx.send(()).expect("Could not send signal on channel."))
+    ctrlc::set_handler(move || {
+        println!("Control-C captured, sending Stop report");
+        tx.send(()).expect("Could not send signal on channel.")
+    })
         .expect("Error setting Ctrl-C handler");
 
     monitor_loop(config, rx)?;
@@ -71,78 +76,92 @@ fn main() -> Result<(), io::Error> {
 
 fn monitor_loop(config: Config, term_receiver: Receiver<()>) -> Result<(), io::Error> {
     let device_id = get_device_id()?;
-    let report_url = config.report_url.as_ref()
-        .map(|p| p.join(&format!("report/{}", &device_id.to_string())).unwrap());
 
     // Tell the server that this device is starting to send reports again
-    if let Some(url) = &report_url {
-        start_reporting(url, config.period_duration.as_secs());
-    }
+    send_report(&config, &device_id, ReportType::Start, &measure(&config)?)?;
 
     // A "sleep", interruptible by receiving a message to exit. Normal looping will produce
     // a timeout error, in which case send the periodic report.
     while term_receiver.recv_timeout(config.period_duration).is_err() {
-        let report = MonitorReport {
-            report_type: OnGoing,
-            period_seconds: config.period_duration.as_secs(),
-            connections: vec![]
-        };
-
-        if let Some(url) = &report_url {
-            match send_report(url, &report) {
-                Ok(_) => println!("Sent {:?} report to: {url}", report.report_type),
-                Err(_) => eprintln!("Error reporting to '{}': skipping report", url.as_str()),
-            }
-        } else {
-            println!("Local Status: \n{report}");
-        }
+        send_report(&config, &device_id, ReportType::OnGoing, &measure(&config)?)?;
     }
 
     // Tell the server that this device is stopping sending of reports
-    if let Some(url) = &report_url {
-        stop_reporting(url)
-    }
+    send_report(&config, &device_id, ReportType::Stop, &measure(&config)?)?;
 
     Ok(())
 }
 
-fn start_reporting(report_url: &Url, period: u64) {
-    let report = MonitorReport {
-        report_type: ReportType::Start,
-        period_seconds: period,
+fn measure(config: &Config) -> Result<MonitorReport, io::Error> {
+    let mut report = MonitorReport {
+        period_seconds: config.period_duration.as_secs(),
         connections: vec![]
     };
 
-    match send_report(report_url, &report) {
-        Ok(_) => println!("Sent {:?} report to: {report_url}", report.report_type),
-        Err(_) => eprintln!("Error reporting to '{}': skipping report", report_url.as_str()),
-    }
-}
+    #[cfg(feature = "ssids")]
+    match &config.monitor_spec {
+        Some(MonitorSpec::All) => {
+            let wifis = wifiscanner::scan().unwrap_or(vec!());
+            for wifi in wifis {
+                report.connections.push(
+                    ConnectionReport {
+                        connection: Connection::SSID(wifi.ssid),
+                        stats: Some( Stats {
+                            power_dbs: wifi.signal_level.parse::<i16>().unwrap_or(0)
+                        })
+                });
+            }
+        },
+        Some(MonitorSpec::SSIDs(report_ssids)) => {
+            let wifis = wifiscanner::scan().unwrap_or(vec!());
+            for wifi in wifis {
+                if report_ssids.contains(&wifi.ssid) {
+                    report.connections.push(
+                        ConnectionReport {
+                            connection: Connection::SSID(wifi.ssid),
+                            stats: Some( Stats {
+                                power_dbs: wifi.signal_level.parse::<i16>().unwrap_or(0)
+                            })
+                    });
+                }
+            }
 
-fn stop_reporting(report_url: &Url) {
-    let report = MonitorReport {
-        report_type: ReportType::Stop,
-        period_seconds: 0,
-        connections: vec![]
+        },
+        Some(MonitorSpec::Connection) => {
+            // TODO - we need to know which SSID is the one being used and only report that one
+        },
+        None => {}
     };
 
-    match send_report(report_url, &report) {
-        Ok(_) => println!("Sent {:?} report to: {report_url}", report.report_type),
-        Err(_) => eprintln!("Error reporting to '{}': skipping report", report_url.as_str()),
-    }
+    Ok(report)
 }
 
-fn send_report(report_url: &Url, report: &MonitorReport) -> Result<(), curl::Error> {
-    let json_string = format!("report={}", json!(report).to_string());
-    let mut post_data = json_string.as_bytes();
-    let mut easy = Easy::new();
-    easy.url(report_url.as_str())?;
-    easy.post(true)?;
-    easy.post_fields_copy(post_data)?;
-    easy.post_field_size(post_data.len() as u64)?;
-    let mut transfer = easy.transfer();
-    transfer.read_function(|buf| { Ok(post_data.read(buf).unwrap()) })?;
-    transfer.perform()
+fn send_report(config: &Config, device_id: &DeviceId, report_type: ReportType, report: &MonitorReport) ->
+                                                                                                       Result<(), curl::Error> {
+    let report_url = config.report_url.as_ref()
+        .map(|p| p.join(&format!("report/{}/{}", report_type.to_string().to_ascii_lowercase(),
+                                 device_id.to_string())).unwrap());
+
+    if let Some(url) = &report_url {
+        let json_string = format!("report={}", json!(report).to_string());
+        let mut post_data = json_string.as_bytes();
+        let mut easy = Easy::new();
+        easy.url(url.as_str())?;
+        easy.post(true)?;
+        easy.post_fields_copy(post_data)?;
+        easy.post_field_size(post_data.len() as u64)?;
+        let mut transfer = easy.transfer();
+        transfer.read_function(|buf| { Ok(post_data.read(buf).unwrap()) })?;
+        let result = transfer.perform();
+        match result {
+            Ok(_) => println!("Sent {:?} report to: {url}", report_type),
+            Err(_) => eprintln!("Error reporting to '{}': skipping report", url.as_str()),
+        }
+        result
+    } else {
+        println!("Local Status: \n{report}");
+        Ok(())
+    }
 }
 
 fn get_device_id() -> Result<DeviceId, io::Error> {

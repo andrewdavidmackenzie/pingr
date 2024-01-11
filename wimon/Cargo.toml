@@ -5,6 +5,10 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = ["ssids"]
+ssids = ["wifiscanner"]
+
 [dependencies]
 data_model = { path = "../data_model"}
 
@@ -18,3 +22,5 @@ toml = { version = "0.8.8" }
 url = "2.2"
 curl = {version = "~0.4" }
 ctrlc = {version = "3.4.1", features = ["termination"] }
+
+wifiscanner = {version = "0.5.1", optional = true}

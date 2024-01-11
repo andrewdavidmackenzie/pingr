@@ -2,7 +2,7 @@ use worker::*;
 use std::fmt::{Display, Formatter};
 use serde_derive::{Deserialize, Serialize};
 use worker::durable_object;
-use data_model::{MonitorReport, ReportType};
+use data_model::MonitorReport;
 use crate::device::DeviceState::{Offline, Reporting, NotReporting};
 
 const MARGIN_SECONDS: u64 = 5;
@@ -51,23 +51,32 @@ impl DurableObject for Device {
     async fn fetch(&mut self, mut req: Request) -> Result<Response> {
         console_log!("\nDO ID: {}", self.state.id().to_string());
 
+        let path = req.path();
+        let report_type = path.split('/').nth(2).unwrap();
+
         // Retrieve previous device_state. If not present (first time!), then start in NotReporting
         self.device_state = self.state.storage().get("device_state").await.unwrap_or(NotReporting);
         console_log!("State: {}", self.device_state);
 
-        let form = req.form_data().await?;
-        match form.get("report") {
-            Some(report_entry) => match report_entry {
-                FormEntry::Field(report_string) => {
-                    let report_json: serde_json::Result<MonitorReport> = serde_json::from_str(&report_string);
-                    match report_json {
-                        Ok(report) => self.process_report(Some(report)).await,
-                        Err(_) => Response::error("Could not deserialize report", 400)
+        match req.method() {
+            Method::Post => {
+                let form = req.form_data().await?;
+                match form.get("report") {
+                    Some(report_entry) => match report_entry {
+                        FormEntry::Field(report_string) => {
+                            let report_json: serde_json::Result<MonitorReport> = serde_json::from_str(&report_string);
+                            match report_json {
+                                Ok(report) => self.process_report(report_type, Some(report)).await,
+                                Err(_) => Response::error("Could not deserialize report", 400)
+                            }
+                        },
+                        _ => Response::error("Unexpected File attached to report", 400)
                     }
-                },
-                _ => Response::error("Unexpected File attached to report", 400)
-            }
-            _ => Response::error("Unexpected FormEntry in report FormData", 400)
+                    _ => Response::error("Unexpected FormEntry in report FormData", 400)
+                }
+            },
+            Method::Get => self.process_report(report_type, None).await,
+            _ => Response::error("Unexpected HTTP Method used", 400)
         }
     }
 
@@ -79,54 +88,52 @@ impl DurableObject for Device {
         self.device_state = self.state.storage().get("device_state").await.unwrap_or(NotReporting);
         console_log!("State: {}", self.device_state);
 
-        self.process_report(None).await
+        self.process_report("alarm", None).await
     }
 }
 
 impl Device {
     // Process a new report or an alarm - implementing the state machine, changing to the new state when required
     // and logging console warnings for states that should not happen if everything is working perfectly
-    async fn process_report(&mut self, report: Option<MonitorReport>)
-        -> Result<Response> {
-        match report {
-            None => { // report overdue
-                console_log!("Event: Alarm");
+    async fn process_report(&mut self, report_type: &str, report: Option<MonitorReport>) -> Result<Response> {
+        console_log!("Event: {} Report", report_type);
+
+        match report_type {
+            "start" => { // Start report
+                if self.device_state == Reporting {
+                    console_warn!("Start Report with device in Reporting state");
+                }
+                if let Some(rep) = report {
+                    self.state.storage().set_alarm(((rep.period_seconds + MARGIN_SECONDS) * 1000) as i64).await?;
+                }
+                self.new_device_state(Reporting).await?;
+            },
+            "ongoing" => { // OnGoing report
+                if self.device_state == NotReporting {
+                    console_warn!("OnGoing Report with device in NotReporting state");
+                }
+                if let Some(rep) = report {
+                    self.state.storage().set_alarm(((rep.period_seconds + MARGIN_SECONDS) * 1000) as i64).await?;
+                }
+                self.new_device_state(Reporting).await?;
+            },
+            "stop" => { // Stop report
+                if self.device_state == NotReporting {
+                    console_warn!("Stop Report with device in NotReporting state");
+                }
+                self.state.storage().delete_alarm().await?;
+                self.new_device_state(NotReporting).await?;
+            }
+            _ => {
                 match &self.device_state {
                     NotReporting => console_warn!("Report overdue with device in NotReporting state"),
                     Reporting => self.new_device_state(Offline).await?,
                     Offline => console_warn!("Report overdue with device in Offline state"),
                 }
-            },
-            Some(rep) => {
-                console_log!("Event: {} Report", rep.report_type);
-
-                match rep.report_type {
-                    ReportType::Start => { // Start report
-                        if self.device_state == Reporting {
-                            console_warn!("Start Report with device in Reporting state");
-                        }
-                        self.state.storage().set_alarm(((rep.period_seconds + MARGIN_SECONDS) * 1000) as i64).await?;
-                        self.new_device_state(Reporting).await?;
-                    },
-                    ReportType::OnGoing => { // OnGoing report
-                        if self.device_state == NotReporting {
-                            console_warn!("OnGoing Report with device in NotReporting state");
-                        }
-                        self.state.storage().set_alarm(((rep.period_seconds + MARGIN_SECONDS) * 1000) as i64).await?;
-                        self.new_device_state(Reporting).await?;
-                    },
-                    ReportType::Stop => { // Stop report
-                        if self.device_state == NotReporting {
-                            console_warn!("Stop Report with device in NotReporting state");
-                        }
-                        self.state.storage().delete_alarm().await?;
-                        self.new_device_state(NotReporting).await?;
-                    }
-                }
             }
         }
 
-        Response::ok("Report Processed")
+        Response::ok(format!("State after report: {}", self.device_state))
     }
 
     // change the state of the tracked device to the new state, if it is different from the current state
