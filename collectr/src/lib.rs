@@ -8,6 +8,10 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
 
     router
         .post_async("/report/:type/:id", |req, ctx| async move {
+            let headers = req.headers();
+            if let Ok(Some(ip)) = headers.get("CF-Connecting-IP") {
+                console_log!("Source IP = {:?}", ip);
+            }
             match ctx.param("id") {
                 Some(device_id) => {
                     let namespace = ctx.durable_object("DEVICES")?;
