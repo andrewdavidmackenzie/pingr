@@ -6,6 +6,7 @@ use url::Url;
 use serde_json::json;
 use std::io::Read;
 use curl::easy::Easy;
+use std::process::Command;
 
 // put under option
 use serde_derive::{Serialize, Deserialize};
@@ -221,7 +222,6 @@ fn read_config(config_file_path: &PathBuf) -> Result<Config, io::Error> {
 
 #[cfg(target_os = "macos")]
 fn get_ssid() -> Result<String, io::Error> {
-    use std::process::Command;
     let output = Command::new("/System/Library/PrivateFrameworks/Apple80211.\
          framework/Versions/Current/Resources/airport")
         .arg("-I")
@@ -245,9 +245,25 @@ fn parse_ssid(data: &str) -> Result<String, io::Error> {
     Err(io::Error::new(io::ErrorKind::NotFound, "Could not parse SSID name"))
 }
 
+// This will need improving for the case when there are multiple interfaces
 #[cfg(target_os = "linux")]
 fn get_ssid() -> Result<String, io::Error> {
-    unimplemented!()
+    let output = Command::new("iw").arg("dev").output()
+    .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not execute 'iw'"))?;
+    let data = String::from_utf8_lossy(&output.stdout);
+    parse_ssid(&data)
+}
+
+#[cfg(target_os = "linux")]
+fn parse_ssid(data: &str) -> Result<String, io::Error> {
+    for line in data.lines() {
+        let mut pair = line.trim().split(" ");
+        if pair.nth(0).unwrap() == "ssid" {
+           return Ok(pair.nth(0).unwrap().trim().to_owned())
+        }
+    }
+
+    Err(io::Error::new(io::ErrorKind::NotFound, "Could not parse SSID name"))
 }
 
 #[cfg(test)]
