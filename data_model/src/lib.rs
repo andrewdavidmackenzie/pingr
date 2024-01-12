@@ -49,7 +49,6 @@ impl Display for ReportType {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct MonitorReport {
-    pub period_seconds: u64,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub connections: Vec<ConnectionReport>,
 }
@@ -57,13 +56,12 @@ pub struct MonitorReport {
 impl Default for MonitorReport {
     fn default() -> Self {
         MonitorReport {
-            period_seconds: 0,
             connections: vec![],
         }
     }
 }
 impl Display for MonitorReport {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "\tPeriod (s) = {}", self.period_seconds)
+        write!(f, "\tconnections = {}", self.connections.len())
     }
 }

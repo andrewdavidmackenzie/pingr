@@ -4,6 +4,7 @@ use serde_derive::{Deserialize, Serialize};
 use worker::durable_object;
 use data_model::MonitorReport;
 use crate::device::DeviceState::{Offline, Reporting, NotReporting};
+use std::borrow::Cow;
 
 const MARGIN_SECONDS: u64 = 5;
 
@@ -58,6 +59,15 @@ impl DurableObject for Device {
         self.device_state = self.state.storage().get("device_state").await.unwrap_or(NotReporting);
         console_log!("State: {}", self.device_state);
 
+        let mut period = None;
+        let url = req.url().unwrap();
+        for query_pair in url.query_pairs() {
+            match query_pair.0 {
+                Cow::Borrowed("period") => period = query_pair.1.parse::<u64>().ok(),
+                _ => {}
+            }
+        }
+
         match req.method() {
             Method::Post => {
                 let form = req.form_data().await?;
@@ -66,7 +76,7 @@ impl DurableObject for Device {
                         FormEntry::Field(report_string) => {
                             let report_json: serde_json::Result<MonitorReport> = serde_json::from_str(&report_string);
                             match report_json {
-                                Ok(report) => self.process_report(report_type, Some(report)).await,
+                                Ok(report) => self.process_report(report_type, period, Some(report)).await,
                                 Err(_) => Response::error("Could not deserialize report", 400)
                             }
                         },
@@ -75,7 +85,7 @@ impl DurableObject for Device {
                     _ => Response::error("Unexpected FormEntry in report FormData", 400)
                 }
             },
-            Method::Get => self.process_report(report_type, None).await,
+            Method::Get => self.process_report(report_type, period, None).await,
             _ => Response::error("Unexpected HTTP Method used", 400)
         }
     }
@@ -88,20 +98,21 @@ impl DurableObject for Device {
         self.device_state = self.state.storage().get("device_state").await.unwrap_or(NotReporting);
         console_log!("State: {}", self.device_state);
 
-        self.process_report("alarm", None).await
+        self.process_report("alarm", None, None).await
     }
 }
 
 impl Device {
     // Process a new report or an alarm - implementing the state machine, changing to the new state when required
     // and logging console warnings for states that should not happen if everything is working perfectly
-    async fn process_report(&mut self, report_type: &str, report: Option<MonitorReport>) -> Result<Response> {
+    async fn process_report(&mut self, report_type: &str, period_seconds: Option<u64>, _report: Option<MonitorReport>)
+        -> Result<Response> {
         console_log!("Event: {}", report_type);
 
         match report_type {
             "ongoing" => { // OnGoing report
-                if let Some(rep) = report {
-                    self.state.storage().set_alarm(((rep.period_seconds + MARGIN_SECONDS) * 1000) as i64).await?;
+                if let Some(period) = period_seconds {
+                    self.state.storage().set_alarm(((period + MARGIN_SECONDS) * 1000) as i64).await?;
                 }
                 self.new_device_state(Reporting).await?;
             },

@@ -94,7 +94,6 @@ fn monitor_loop(config: Config, term_receiver: Receiver<()>) -> Result<(), io::E
 
 fn measure(config: &Config) -> Result<MonitorReport, io::Error> {
     let mut report = MonitorReport {
-        period_seconds: config.period_duration.as_secs(),
         connections: vec![]
     };
 
@@ -140,8 +139,8 @@ fn send_report(config: &Config, device_id: &DeviceId, report_type: ReportType, r
     let ssid = get_ssid().map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not get SSID"))?;
 
     let report_url = config.report_url.as_ref()
-        .map(|p| p.join(&format!("report/{}/{}?device_id={}&ssid={}", report_type.to_string().to_ascii_lowercase(),
-                                 device_id.to_string(), device_id.to_string(), ssid)).unwrap());
+        .map(|p| p.join(&format!("report/{}?device_id={}&ssid={}&period={}", report_type.to_string().to_ascii_lowercase(),
+                                 device_id.to_string(), ssid, config.period_duration.as_secs())).unwrap());
 
     if let Some(url) = &report_url {
         let json_string = format!("report={}", json!(report).to_string());
@@ -223,10 +222,8 @@ fn read_config(config_file_path: &PathBuf) -> Result<Config, io::Error> {
 #[cfg(target_os = "macos")]
 fn get_ssid() -> Result<String, io::Error> {
     use std::process::Command;
-    let output = Command::new(
-        "/System/Library/PrivateFrameworks/Apple80211.\
-         framework/Versions/Current/Resources/airport",
-    )
+    let output = Command::new("/System/Library/PrivateFrameworks/Apple80211.\
+         framework/Versions/Current/Resources/airport")
         .arg("-I")
         .output()
         .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Command not found"))?;
