@@ -222,7 +222,30 @@ fn read_config(config_file_path: &PathBuf) -> Result<Config, io::Error> {
 
 #[cfg(target_os = "macos")]
 fn get_ssid() -> Result<String, io::Error> {
-    Ok("MOVISTAR_PLUS_8A9E".to_string())
+    use std::process::Command;
+    let output = Command::new(
+        "/System/Library/PrivateFrameworks/Apple80211.\
+         framework/Versions/Current/Resources/airport",
+    )
+        .arg("-I")
+        .output()
+        .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Command not found"))?;
+
+    let data = String::from_utf8_lossy(&output.stdout);
+
+    parse_ssid(&data)
+}
+
+#[cfg(target_os = "macos")]
+fn parse_ssid(data: &str) -> Result<String, io::Error> {
+    for line in data.lines() {
+        let mut pair = line.trim().split(":");
+        if pair.nth(0).unwrap() == "SSID" {
+           return Ok(pair.nth(0).unwrap().trim().to_owned())
+        }
+    }
+
+    Err(io::Error::new(io::ErrorKind::NotFound, "Could not parse SSID name"))
 }
 
 #[cfg(target_os = "linux")]
