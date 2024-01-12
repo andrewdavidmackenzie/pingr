@@ -77,8 +77,8 @@ fn main() -> Result<(), io::Error> {
 fn monitor_loop(config: Config, term_receiver: Receiver<()>) -> Result<(), io::Error> {
     let device_id = get_device_id()?;
 
-    // Tell the server that this device is starting to send reports again
-    send_report(&config, &device_id, ReportType::Start, &measure(&config)?)?;
+    // Send initial report
+    send_report(&config, &device_id, ReportType::OnGoing, &measure(&config)?)?;
 
     // A "sleep", interruptible by receiving a message to exit. Normal looping will produce
     // a timeout error, in which case send the periodic report.
@@ -136,27 +136,30 @@ fn measure(config: &Config) -> Result<MonitorReport, io::Error> {
 }
 
 fn send_report(config: &Config, device_id: &DeviceId, report_type: ReportType, report: &MonitorReport) ->
-                                                                                                       Result<(), curl::Error> {
+       Result<(), io::Error> {
+    let ssid = get_ssid().map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not get SSID"))?;
+
     let report_url = config.report_url.as_ref()
-        .map(|p| p.join(&format!("report/{}/{}", report_type.to_string().to_ascii_lowercase(),
-                                 device_id.to_string())).unwrap());
+        .map(|p| p.join(&format!("report/{}/{}?device_id={}&ssid={}", report_type.to_string().to_ascii_lowercase(),
+                                 device_id.to_string(), device_id.to_string(), ssid)).unwrap());
 
     if let Some(url) = &report_url {
         let json_string = format!("report={}", json!(report).to_string());
         let mut post_data = json_string.as_bytes();
         let mut easy = Easy::new();
-        easy.url(url.as_str())?;
-        easy.post(true)?;
-        easy.post_fields_copy(post_data)?;
-        easy.post_field_size(post_data.len() as u64)?;
+        easy.url(url.as_str()).map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not set url on curl request"))?;
+        easy.post(true).map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not set POST on curl request"))?;
+        easy.post_fields_copy(post_data).map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not add POST data on curl request"))?;
+        easy.post_field_size(post_data.len() as u64).map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not set POST field size on curl request"))?;
         let mut transfer = easy.transfer();
-        transfer.read_function(|buf| { Ok(post_data.read(buf).unwrap()) })?;
+        transfer.read_function(|buf| { Ok(post_data.read(buf).unwrap()) })
+            .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not read data for curl request"))?;
         let result = transfer.perform();
         match result {
             Ok(_) => println!("Sent {:?} report to: {url}", report_type),
             Err(_) => eprintln!("Error reporting to '{}': skipping report", url.as_str()),
         }
-        result
+        result.map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not perform curl request"))
     } else {
         println!("Local Status: \n{report}");
         Ok(())
@@ -215,6 +218,16 @@ fn read_config(config_file_path: &PathBuf) -> Result<Config, io::Error> {
     };
 
     Ok(config)
+}
+
+#[cfg(target_os = "macos")]
+fn get_ssid() -> Result<String, io::Error> {
+    Ok("MOVISTAR_PLUS_8A9E".to_string())
+}
+
+#[cfg(target_os = "linux")]
+fn get_ssid() -> Result<String, io::Error> {
+    unimplemented!()
 }
 
 #[cfg(test)]

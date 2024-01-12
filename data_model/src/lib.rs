@@ -34,7 +34,6 @@ pub struct ConnectionReport {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ReportType {
-    Start,
     Stop,
     OnGoing
 }
@@ -42,7 +41,6 @@ pub enum ReportType {
 impl Display for ReportType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            ReportType::Start => write!(f, "Start"),
             ReportType::Stop => write!(f, "Stop"),
             ReportType::OnGoing => write!(f, "OnGoing"),
         }

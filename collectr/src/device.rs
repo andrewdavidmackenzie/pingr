@@ -99,19 +99,7 @@ impl Device {
         console_log!("Event: {}", report_type);
 
         match report_type {
-            "start" => { // Start report
-                if self.device_state == Reporting {
-                    console_warn!("Start Report with device in Reporting state");
-                }
-                if let Some(rep) = report {
-                    self.state.storage().set_alarm(((rep.period_seconds + MARGIN_SECONDS) * 1000) as i64).await?;
-                }
-                self.new_device_state(Reporting).await?;
-            },
             "ongoing" => { // OnGoing report
-                if self.device_state == NotReporting {
-                    console_warn!("OnGoing Report with device in NotReporting state");
-                }
                 if let Some(rep) = report {
                     self.state.storage().set_alarm(((rep.period_seconds + MARGIN_SECONDS) * 1000) as i64).await?;
                 }
