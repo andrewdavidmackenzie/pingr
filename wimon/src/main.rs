@@ -94,7 +94,10 @@ fn monitor_loop(config: Config, term_receiver: Receiver<()>) -> Result<(), io::E
 }
 
 fn measure(config: &Config) -> Result<MonitorReport, io::Error> {
+    let ssid = get_ssid().map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not get SSID"))?;
+
     let mut report = MonitorReport {
+        connection_used: Connection::SSID(ssid.clone()),
         connections: vec![]
     };
 
@@ -125,23 +128,31 @@ fn measure(config: &Config) -> Result<MonitorReport, io::Error> {
                     });
                 }
             }
-
         },
         MonitorSpec::Connection => {
-            // TODO - we need to know which SSID is the one being used and only report that one
+            let wifis = wifiscanner::scan().unwrap_or(vec!());
+            for wifi in wifis {
+                if wifi.ssid == ssid {
+                    report.connections.push(
+                        ConnectionReport {
+                            connection: Connection::SSID(wifi.ssid),
+                            stats: Some( Stats {
+                                power_dbs: wifi.signal_level.parse::<i16>().unwrap_or(0)
+                            })
+                        });
+                }
+            }
         }
     };
 
     Ok(report)
 }
 
-fn send_report(config: &Config, device_id: &DeviceId, report_type: ReportType, report: &MonitorReport) ->
-       Result<(), io::Error> {
-    let ssid = get_ssid().map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not get SSID"))?;
-
+fn send_report(config: &Config, device_id: &DeviceId, report_type: ReportType, report: &MonitorReport)
+    -> Result<(), io::Error> {
     let report_url = config.report_url.as_ref()
         .map(|p| p.join(&format!("report/{}?device_id={}&ssid={}&period={}", report_type.to_string().to_ascii_lowercase(),
-                                 device_id.to_string(), ssid, config.period_duration.as_secs())).unwrap());
+                                 device_id.to_string(), report.connection_used, config.period_duration.as_secs())).unwrap());
 
     if let Some(url) = &report_url {
         let json_string = format!("report={}", json!(report).to_string());
