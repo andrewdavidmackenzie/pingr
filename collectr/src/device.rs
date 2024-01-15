@@ -3,13 +3,18 @@ use std::fmt::{Display, Formatter};
 use serde_derive::{Deserialize, Serialize};
 use worker::durable_object;
 use data_model::MonitorReport;
-use crate::device::DeviceState::{Offline, Reporting, NotReporting};
+use crate::device::DeviceState::{New, Offline, Reporting, NotReporting};
 use std::borrow::Cow;
 
 const MARGIN_SECONDS: u64 = 5;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 enum DeviceState {
+    /// New signifies that the state for this Device has not been loaded from storage yet
+    /// and it maybe the first time this DO for it runs, hence there is nothing in storage
+    /// This ensures that the first time the DO runs, as different state MUST result and the
+    /// initial (real) state is written to storage and event generated as the state changed
+    New,
     /// The device stopped reporting, and is not considered offline
     NotReporting,
     /// The device is reporting, and more reports should be expected, on-time
@@ -21,6 +26,7 @@ enum DeviceState {
 impl Display for DeviceState {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
+            DeviceState::New => write!(f, "New"),
             DeviceState::NotReporting => write!(f, "NotReporting"),
             DeviceState::Reporting => write!(f, "Reporting"),
             DeviceState::Offline => write!(f, "Offline"),
@@ -45,7 +51,7 @@ impl DurableObject for Device {
         Self {
             state,
             env,
-            device_state: NotReporting,
+            device_state: New,
         }
     }
 
@@ -55,8 +61,8 @@ impl DurableObject for Device {
         let path = req.path();
         let report_type = path.split('/').nth(2).unwrap();
 
-        // Retrieve previous device_state. If not present (first time!), then start in NotReporting
-        self.device_state = self.state.storage().get("device_state").await.unwrap_or(NotReporting);
+        // Retrieve previous device_state. If not present (first time!), then New
+        self.device_state = self.state.storage().get("device_state").await.unwrap_or(New);
         console_log!("State: {}", self.device_state);
 
         let mut period = None;
@@ -109,6 +115,9 @@ impl Device {
         -> Result<Response> {
         console_log!("Event: {}", report_type);
 
+        // Note: `New` is not one of the possible states set below, so if this is the first time the DO for this
+        // device runs it MUST result in a different state (Reporting would be normal, but others in error cases)
+        // and so the new state (`New` not being one of them) MUST be stored and a state change event generated
         match report_type {
             "ongoing" => { // OnGoing report
                 if let Some(period) = period_seconds {
@@ -125,9 +134,10 @@ impl Device {
             }
             _ => {
                 match &self.device_state {
+                    New => console_warn!("Report overdue with device in New state"),
                     NotReporting => console_warn!("Report overdue with device in NotReporting state"),
-                    Reporting => self.new_device_state(Offline).await?,
                     Offline => console_warn!("Report overdue with device in Offline state"),
+                    Reporting => self.new_device_state(Offline).await?,
                 }
             }
         }
