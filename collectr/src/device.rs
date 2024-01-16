@@ -8,6 +8,8 @@ use std::borrow::Cow;
 
 const MARGIN_SECONDS: u64 = 5;
 
+const DEVICE_STATUS_KV_NAMESPACE: &str = "DEVICE_STATUS";
+
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 enum DeviceState {
     /// New signifies that the state for this Device has not been loaded from storage yet
@@ -142,7 +144,7 @@ impl Device {
             }
         }
 
-        Response::ok(format!("State after report: {}", self.device_state))
+        Response::ok(format!("Device ID: {} State: {}", self.state.id().to_string(), self.device_state))
     }
 
     // change the state of the tracked device to the new state, if it is different from the current state
@@ -151,7 +153,12 @@ impl Device {
         if self.device_state != new_state {
             console_log!("State transition from {} to {}", self.device_state, new_state);
             self.device_state = new_state;
-            self.state.storage().put("device_state", &self.device_state).await
+            // Store the state in the DO's storage for next time around
+            self.state.storage().put("device_state", &self.device_state).await?;
+            // Store the state in KV store that can be read elsewhere
+            let kv = self.env.kv(DEVICE_STATUS_KV_NAMESPACE)?;
+            kv.put(&self.state.id().to_string(), &self.device_state)?.execute().await?;
+            Ok(())
         } else {
             Ok(())
         }

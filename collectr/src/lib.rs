@@ -9,10 +9,12 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
 
     router
         .post_async("/report/:type", |req, ctx| async move {
+            /*
             let headers = req.headers();
             if let Ok(Some(ip)) = headers.get("CF-Connecting-IP") {
                 console_log!("Source IP = {:?}", ip);
             }
+             */
 
             let mut device_id = None;
             let mut _ssid = None;

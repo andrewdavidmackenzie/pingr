@@ -7,6 +7,10 @@ durable_objects.bindings = [
     { name = "DEVICES", class_name = "Device" }
 ]
 
+kv_namespaces = [
+    { binding = "DEVICE_STATUS", id = "aa1793c1a3d7497bb12ce3c5d2c3f3c7" }
+]
+
 [[migrations]]
 tag = "v1"
 new_classes = ["Device"]

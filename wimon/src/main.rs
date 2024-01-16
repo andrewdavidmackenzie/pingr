@@ -154,20 +154,31 @@ fn send_report(config: &Config, device_id: &DeviceId, report_type: ReportType, r
         .map(|p| p.join(&format!("report/{}?device_id={}&ssid={}&period={}", report_type.to_string().to_ascii_lowercase(),
                                  device_id.to_string(), report.connection_used, config.period_duration.as_secs())).unwrap());
 
+    let mut data = Vec::new();
     if let Some(url) = &report_url {
         let json_string = format!("report={}", json!(report).to_string());
         let mut post_data = json_string.as_bytes();
         let mut easy = Easy::new();
+        let result;
         easy.url(url.as_str()).map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not set url on curl request"))?;
-        easy.post(true).map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not set POST on curl request"))?;
-        easy.post_fields_copy(post_data).map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not add POST data on curl request"))?;
-        easy.post_field_size(post_data.len() as u64).map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not set POST field size on curl request"))?;
-        let mut transfer = easy.transfer();
-        transfer.read_function(|buf| { Ok(post_data.read(buf).unwrap()) })
-            .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not read data for curl request"))?;
-        let result = transfer.perform();
+        {
+            easy.post(true).map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not set POST on curl request"))?;
+            easy.post_fields_copy(post_data).map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not add POST data on curl request"))?;
+            easy.post_field_size(post_data.len() as u64).map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not set POST field size on curl request"))?;
+            let mut transfer = easy.transfer();
+            transfer.read_function(|buf| { Ok(post_data.read(buf).unwrap()) })
+                .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not read data for curl request"))?;
+            transfer.write_function(|new_data| {
+                data.extend_from_slice(new_data);
+                Ok(new_data.len())
+            })?;
+            result = transfer.perform();
+        }
         match result {
-            Ok(_) => println!("Sent {:?} report to: {url}", report_type),
+            Ok(_) => {
+                println!("Sent {} report to: {}", report_type, url.host().unwrap());
+                println!("Response: {}", String::from_utf8_lossy(&data));
+            },
             Err(_) => eprintln!("Error reporting to '{}': skipping report", url.as_str()),
         }
         result.map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not perform curl request"))
