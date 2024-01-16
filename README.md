@@ -41,11 +41,11 @@ npx wrangler dev
 If you want to run a local `wimon` against this running version of `collectr`
 then you will need to edit the `wimon.toml` file in the wimon directory
 something like this:
-```commandline
-...
+```toml
+#<removed text>
 base_url = "http://localhost:8787"
 #base_url = "https://collectr.mackenzie-serres.workers.dev"
-...
+#<removed text>
 ```
 
 ### Deploying collectr to cloudflare's network
