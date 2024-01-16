@@ -151,7 +151,7 @@ fn measure(config: &Config) -> Result<MonitorReport, io::Error> {
 fn send_report(config: &Config, device_id: &DeviceId, report_type: ReportType, report: &MonitorReport)
     -> Result<(), io::Error> {
     let report_url = config.report_url.as_ref()
-        .map(|p| p.join(&format!("report/{}?device_id={}&ssid={}&period={}", report_type.to_string().to_ascii_lowercase(),
+        .map(|p| p.join(&format!("report/{}?device_id={}&connection={}&period={}", report_type.to_string().to_ascii_lowercase(),
                                  device_id.to_string(), report.connection_used, config.period_duration.as_secs())).unwrap());
 
     let mut data = Vec::new();

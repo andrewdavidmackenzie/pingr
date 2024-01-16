@@ -23,14 +23,14 @@ pub struct Stats {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Connection {
     SSID(String),
-    Ethernet
+    Ethernet(String)
 }
 
 impl Display for Connection {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Connection::Ethernet => write!(f, "\tEthernet"),
-            Connection::SSID(ssid) => write!(f, "\tSSID = {}", ssid),
+            Connection::Ethernet(mac) => write!(f, "\tethernet={mac}"),
+            Connection::SSID(ssid) => write!(f, "\tssid={ssid}"),
         }
     }
 }
@@ -66,7 +66,7 @@ pub struct MonitorReport {
 impl Default for MonitorReport {
     fn default() -> Self {
         MonitorReport {
-            connection_used: Connection::Ethernet,
+            connection_used: Connection::Ethernet("default".to_string()),
             connections: vec![],
         }
     }
