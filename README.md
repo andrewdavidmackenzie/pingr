@@ -48,7 +48,7 @@ base_url = "http://localhost:8787"
 ...
 ```
 
-### Depolying collectr to cloudflare's network
+### Deploying collectr to cloudflare's network
 ```commandline
 npx wrangler deploy
 ```
@@ -60,27 +60,27 @@ command line application, which when run on a remove device will send regular re
 
 ### Building wimon
 You can build `wimon` using
-```
+```commandline
 cd wimon
 cargo build
 ```
 
 #### Building wimon on Raspberry Pi
 libssl headers are required, install with:
-```
+```commandline
 sudo apt-get install libssl-dev
 ```
 
 #### Running wimon
 You can run the wimon binary with the standard options using:
-```
+```commandline
 cd wimon
 cargo run
 ```
 
 #### Testing wimon
 Test wimon locally using
-```
+```commandline
 cargo test
 ```
 
