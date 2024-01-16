@@ -83,3 +83,10 @@ Test wimon locally using
 ```
 cargo test
 ```
+
+### Supported platforms
+Currently `wimon` has been tested to run on:
+ - macos 
+ - linux (ubuntu)
+ - raspberry pi 4 (Pi400 in fact) with Raspberry Pi OS
+ - raspberry pi zero (W - with wifi) with Raspberry Pi OS
