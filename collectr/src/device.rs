@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter};
 use serde_derive::{Deserialize, Serialize};
 use worker::durable_object;
 use data_model::MonitorReport;
-use crate::device::DeviceState::{New, Offline, Reporting, NotReporting};
+use crate::device::DeviceState::{New, Offline, Reporting, Stopped};
 use std::borrow::Cow;
 
 const MARGIN_SECONDS: u64 = 5;
@@ -18,7 +18,7 @@ enum DeviceState {
     /// initial (real) state is written to storage and event generated as the state changed
     New,
     /// The device stopped reporting, and is not considered offline
-    NotReporting,
+    Stopped,
     /// The device is reporting, and more reports should be expected, on-time
     Reporting,
     /// The device should be reporting, but a report didn't arrive on-time
@@ -29,7 +29,7 @@ impl Display for DeviceState {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             DeviceState::New => write!(f, "New"),
-            DeviceState::NotReporting => write!(f, "NotReporting"),
+            DeviceState::Stopped => write!(f, "Stopped"),
             DeviceState::Reporting => write!(f, "Reporting"),
             DeviceState::Offline => write!(f, "Offline"),
         }
@@ -102,8 +102,8 @@ impl DurableObject for Device {
     async fn alarm(&mut self) -> Result<Response> {
         console_log!("\nDO ID: {}", self.state.id().to_string());
 
-        // Retrieve previous device_state. If not present (first time!), then start in NotReporting
-        self.device_state = self.state.storage().get("device_state").await.unwrap_or(NotReporting);
+        // Retrieve previous device_state. If not present (first time!), then start in New
+        self.device_state = self.state.storage().get("device_state").await.unwrap_or(New);
         console_log!("State: {}", self.device_state);
 
         self.process_report("alarm", None, None).await
@@ -128,16 +128,16 @@ impl Device {
                 self.new_device_state(Reporting).await?;
             },
             "stop" => { // Stop report
-                if self.device_state == NotReporting {
-                    console_warn!("Stop Report with device in NotReporting state");
+                if self.device_state == Stopped {
+                    console_warn!("Stop Report with device in Stopped state");
                 }
                 self.state.storage().delete_alarm().await?;
-                self.new_device_state(NotReporting).await?;
+                self.new_device_state(Stopped).await?;
             }
             _ => {
                 match &self.device_state {
                     New => console_warn!("Report overdue with device in New state"),
-                    NotReporting => console_warn!("Report overdue with device in NotReporting state"),
+                    Stopped => console_warn!("Report overdue with device in Stopped state"),
                     Offline => console_warn!("Report overdue with device in Offline state"),
                     Reporting => self.new_device_state(Offline).await?,
                 }
