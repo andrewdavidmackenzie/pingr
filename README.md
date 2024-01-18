@@ -89,6 +89,12 @@ execute it with the "install" command:
 cargo run -- install
 ```
 
+NOTE: You will probably have to enable "lingering services" in order for the service to keep running after the 
+user has exited:
+```commandline
+sudo loginctl enable-linger $USER
+```
+
 #### Uninstalling wimon as a service (Macos, Linux, Window)
 To remove the installed `wimon` background service (after stopping it first) execute it with the "uninstall" command:
 ```commandline
