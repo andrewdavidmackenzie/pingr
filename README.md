@@ -86,19 +86,13 @@ is found. Then it loads the config from there. This may change in the future.
 To install `wimon` as a background service (and start it immediately) that is also re-started at boot, 
 execute it with the "install" command:
 ```commandline
-cargo run -- install
-```
-
-NOTE: You will probably have to enable "lingering services" in order for the service to keep running after the 
-user has exited:
-```commandline
-sudo loginctl enable-linger $USER
+sudo cargo run -- install
 ```
 
 #### Uninstalling wimon as a service (Macos, Linux, Window)
 To remove the installed `wimon` background service (after stopping it first) execute it with the "uninstall" command:
 ```commandline
-cargo run -- uninstall
+sudo cargo run -- uninstall
 ```
 
 #### Testing wimon
