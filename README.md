@@ -95,6 +95,29 @@ To remove the installed `wimon` background service (after stopping it first) exe
 sudo cargo run -- uninstall
 ```
 
+#### Check the status of service on linux
+You can check the current status and get last output using:
+```commandline
+systemctl status mackenzie-serres-pingr.wimon.service
+```
+which should return something like:
+```● mackenzie-serres-pingr.wimon.service - mackenzie-serres-pingr.wimon
+     Loaded: loaded (/etc/systemd/system/mackenzie-serres-pingr.wimon.service; enabled; vendor preset: enabled)
+     Active: active (running) since Fri 2024-01-19 12:28:13 CET; 2min 0s ago
+   Main PID: 2619 (wimon)
+      Tasks: 2 (limit: 414)
+        CPU: 618ms
+     CGroup: /system.slice/mackenzie-serres-pingr.wimon.service
+             └─2619 /home/andrew/workspace/pingr/target/debug/wimon
+
+Jan 19 12:28:13 pizerow0 systemd[1]: Started mackenzie-serres-pingr.wimon.
+Jan 19 12:28:13 pizerow0 wimon[2619]: Config file loaded from: "/home/andrew/workspace/pingr/wimon.toml"
+Jan 19 12:28:13 pizerow0 wimon[2619]: Monitor: Connection
+Jan 19 12:28:15 pizerow0 wimon[2619]: Sent OnGoing report to: collectr.mackenzie-serres.workers.dev
+Jan 19 12:28:15 pizerow0 wimon[2619]: Response: Device ID: c6426011b76adc13c41ffd737c0a07b2495f59a2bc94f725d26>
+Jan 19 12:29:17 pizerow0 wimon[2619]: Sent OnGoing report to: collectr.mackenzie-serres.workers.dev
+Jan 19 12:29:17 pizerow0 wimon[2619]: Response: Device ID: c6426011b76adc13c41ffd737c0a07b2495f59a2bc94f725d26>
+```
 #### Testing wimon
 Test wimon locally using
 ```commandline
