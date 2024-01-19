@@ -13,9 +13,6 @@ use std::process::Command;
 pub(crate) fn monitor_loop(config: Config, term_receiver: Receiver<()>) -> Result<(), io::Error> {
     let device_id = get_device_id()?;
 
-    // Send initial report
-    send_report(&config, &device_id, ReportType::OnGoing, &measure(&config)?)?;
-
     // A "sleep", interruptible by receiving a message to exit. Normal looping will produce
     // a timeout error, in which case send the periodic report.
     while term_receiver.recv_timeout(config.period_duration).is_err() {
