@@ -49,10 +49,6 @@ fn get_service_manager() -> Result<Box<dyn ServiceManager>, io::Error> {
     let manager = <dyn ServiceManager>::native()
         .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not create ServiceManager"))?;
 
-    // Update our manager to work with user-level services
-//    manager.set_level(ServiceLevel::User)
-//        .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not set ServiceManager level to User"))?;
-
     Ok(manager)
 }
 
