@@ -6,20 +6,15 @@ use url::Url;
 
 pub(crate) const CONFIG_FILE_NAME: &str = "wimon.toml";
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Default)]
 pub(crate) enum MonitorSpec {
     /// Report status of all SSIDs that are detected at each monitoring moment
     All,
     /// Only report on the status of the connection (wifi or ethernet) used to send results
+    #[default]
     Connection,
     /// Monitor a specific list of supplied SSIDs by name
     SSIDs(Vec<String>)
-}
-
-impl Default for MonitorSpec {
-    fn default() -> Self {
-        MonitorSpec::Connection
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]

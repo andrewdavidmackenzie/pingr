@@ -6,8 +6,6 @@ use serde_json::json;
 use std::io::Read;
 use data_model::{ConnectionReport, DeviceId, MonitorReport, ReportType, Stats, Connection};
 use crate::config::{Config, MonitorSpec};
-#[cfg(feature = "ssids")]
-use wifiscanner;
 use std::process::Command;
 
 pub(crate) fn monitor_loop(config: Config, term_receiver: Receiver<()>) -> Result<(), io::Error> {
@@ -36,7 +34,7 @@ fn measure(config: &Config) -> Result<MonitorReport, io::Error> {
     #[cfg(feature = "ssids")]
     match &config.monitor_spec.as_ref().unwrap_or(&MonitorSpec::Connection) {
         MonitorSpec::All => {
-            let wifis = wifiscanner::scan().unwrap_or(vec!());
+            let wifis = wifiscanner::scan().unwrap_or_default();
             for wifi in wifis {
                 report.connections.push(
                     ConnectionReport {
@@ -48,7 +46,7 @@ fn measure(config: &Config) -> Result<MonitorReport, io::Error> {
             }
         },
         MonitorSpec::SSIDs(report_ssids) => {
-            let wifis = wifiscanner::scan().unwrap_or(vec!());
+            let wifis = wifiscanner::scan().unwrap_or_default();
             for wifi in wifis {
                 if report_ssids.contains(&wifi.ssid) {
                     report.connections.push(
@@ -62,7 +60,7 @@ fn measure(config: &Config) -> Result<MonitorReport, io::Error> {
             }
         },
         MonitorSpec::Connection => {
-            let wifis = wifiscanner::scan().unwrap_or(vec!());
+            let wifis = wifiscanner::scan().unwrap_or_default();
             for wifi in wifis {
                 if wifi.ssid == ssid {
                     report.connections.push(
@@ -84,11 +82,11 @@ fn send_report(config: &Config, device_id: &DeviceId, report_type: ReportType, r
                -> Result<(), io::Error> {
     let report_url = config.report_url.as_ref()
         .map(|p| p.join(&format!("report/{}?device_id={}&connection={}&period={}", report_type.to_string().to_ascii_lowercase(),
-                                 device_id.to_string(), report.connection_used, config.period_duration.as_secs())).unwrap());
+                                 device_id, report.connection_used, config.period_duration.as_secs())).unwrap());
 
     let mut data = Vec::new();
     if let Some(url) = &report_url {
-        let json_string = format!("report={}", json!(report).to_string());
+        let json_string = format!("report={}", json!(report));
         let mut post_data = json_string.as_bytes();
         let mut easy = Easy::new();
         let result;
@@ -143,9 +141,9 @@ fn get_ssid() -> Result<String, io::Error> {
 #[cfg(target_os = "macos")]
 fn parse_ssid(data: &str) -> Result<String, io::Error> {
     for line in data.lines() {
-        let mut pair = line.trim().split(":");
-        if pair.nth(0).unwrap() == "SSID" {
-            return Ok(pair.nth(0).unwrap().trim().to_owned())
+        let mut pair = line.trim().split(':');
+        if pair.next().unwrap() == "SSID" {
+            return Ok(pair.next().unwrap().trim().to_owned())
         }
     }
 

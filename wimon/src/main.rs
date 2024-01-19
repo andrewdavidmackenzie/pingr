@@ -1,7 +1,6 @@
 use std::{env, io};
 use std::path::PathBuf;
 use std::sync::mpsc::channel;
-use ctrlc;
 use config::MonitorSpec;
 use service_manager::*;
 
@@ -30,7 +29,7 @@ fn main() -> Result<(), io::Error> {
 }
 
 fn run(config_file_path: &PathBuf) -> Result<(), io::Error> {
-    let config = config::read_config(&config_file_path)?;
+    let config = config::read_config(config_file_path)?;
     println!("Config file loaded from: \"{}\"", config_file_path.display());
     println!("Monitor: {:?}", config.monitor_spec.as_ref().unwrap_or(&MonitorSpec::Connection));
 
