@@ -1,4 +1,5 @@
 all:
+	cargo clippy
 	npx wrangler build
 
 run:

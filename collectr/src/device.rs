@@ -70,9 +70,8 @@ impl DurableObject for Device {
         let mut period = None;
         let url = req.url().unwrap();
         for query_pair in url.query_pairs() {
-            match query_pair.0 {
-                Cow::Borrowed("period") => period = query_pair.1.parse::<u64>().ok(),
-                _ => {}
+            if let Cow::Borrowed("period") = query_pair.0 {
+                period = query_pair.1.parse::<u64>().ok();
             }
         }
 
