@@ -44,25 +44,27 @@ fn run(config_file_path: &PathBuf) -> Result<(), io::Error> {
     monitor::monitor_loop(config, rx)
 }
 
-fn user_service_manager() -> Result<Box<dyn ServiceManager>, io::Error> {
+fn get_service_manager() -> Result<Box<dyn ServiceManager>, io::Error> {
     // Get generic service by detecting what is available on the platform
     let mut manager = <dyn ServiceManager>::native()
         .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not create ServiceManager"))?;
 
     // Update our manager to work with user-level services
-    manager.set_level(ServiceLevel::User)
-        .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not set ServiceManager level to User"))?;
+//    manager.set_level(ServiceLevel::User)
+//        .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not set ServiceManager level to User"))?;
 
     Ok(manager)
 }
 
 // This will install the binary as a user level service and then start it
 fn install_service(service_name: &ServiceLabel, path_to_exec: &str) -> Result<(), io::Error> {
-    let manager = user_service_manager()?;
+    let manager = get_service_manager()?;
     let exec_path = PathBuf::from(path_to_exec);
     // Run from dir where exec is for now, so it should find the config file in ancestors path
     let exec_dir = exec_path.parent()
-        .ok_or( io::Error::new(io::ErrorKind::NotFound, "Could not get exec dir"))?.to_path_buf();
+        .ok_or( io::Error::new(io::ErrorKind::NotFound, "Could not get exec dir"))?
+        .canonicalize()?
+        .to_path_buf();
 
     // Install our service using the underlying service management platform
     manager.install(ServiceInstallCtx {
@@ -87,7 +89,7 @@ fn install_service(service_name: &ServiceLabel, path_to_exec: &str) -> Result<()
 
 // this will stop any running instance of the service, then uninstall it
 fn uninstall_service(service_name: &ServiceLabel) -> Result<(), io::Error> {
-    let manager = user_service_manager()?;
+    let manager = get_service_manager()?;
 
     // Stop our service using the underlying service management platform
     manager.stop(ServiceStopCtx {
