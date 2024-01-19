@@ -59,11 +59,10 @@ fn get_service_manager() -> Result<Box<dyn ServiceManager>, io::Error> {
 // This will install the binary as a user level service and then start it
 fn install_service(service_name: &ServiceLabel, path_to_exec: &str) -> Result<(), io::Error> {
     let manager = get_service_manager()?;
-    let exec_path = PathBuf::from(path_to_exec);
+    let exec_path = PathBuf::from(path_to_exec).canonicalize()?;
     // Run from dir where exec is for now, so it should find the config file in ancestors path
     let exec_dir = exec_path.parent()
         .ok_or( io::Error::new(io::ErrorKind::NotFound, "Could not get exec dir"))?
-        .canonicalize()?
         .to_path_buf();
 
     // Install our service using the underlying service management platform
