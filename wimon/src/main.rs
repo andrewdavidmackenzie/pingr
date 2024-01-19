@@ -46,7 +46,7 @@ fn run(config_file_path: &PathBuf) -> Result<(), io::Error> {
 
 fn get_service_manager() -> Result<Box<dyn ServiceManager>, io::Error> {
     // Get generic service by detecting what is available on the platform
-    let mut manager = <dyn ServiceManager>::native()
+    let manager = <dyn ServiceManager>::native()
         .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not create ServiceManager"))?;
 
     // Update our manager to work with user-level services
