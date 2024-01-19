@@ -8,7 +8,7 @@ use service_manager::*;
 mod config;
 mod monitor;
 
-const SERVICE_NAME: &str = "net.mackenzie-service.pingr.wimon";
+const SERVICE_NAME: &str = "net.mackenzie-serres.pingr.wimon";
 
 fn main() -> Result<(), io::Error> {
     let service_name: ServiceLabel = SERVICE_NAME.parse().unwrap();
