@@ -1,3 +1,4 @@
+![](icon.png)
 # pingr
 Pingr is a project to help monitor remote network connections by deploying a small monitoring 
 program at the remote site (could be on an embedded device, a raspberry pi or a 
