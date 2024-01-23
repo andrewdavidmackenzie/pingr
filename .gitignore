@@ -16,3 +16,4 @@ Cargo.lock
 .vscode/
 .wrangler/
 node_modules/
+dist/
