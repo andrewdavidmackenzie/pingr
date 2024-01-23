@@ -44,7 +44,7 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
 
                     stub.fetch_with_request(req).await
                 }
-                _ => Response::error("Bad Request - missing device id", 400),
+                _ => Response::error("Bad Request - missing device_id", 400),
             }
 
         })
