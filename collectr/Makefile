@@ -7,3 +7,6 @@ run:
 
 deploy:
 	npx wrangler deploy
+
+test:
+	cargo test
