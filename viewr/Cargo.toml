@@ -10,4 +10,5 @@ edition.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+console_error_panic_hook = "0.1.7"
 leptos = { version = "0.5.7", features = ["csr"] }
