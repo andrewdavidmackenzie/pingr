@@ -14,27 +14,30 @@ async fn api_device_list() -> Result<Vec<String>> {
         .json::<Vec<Device>>()
         .await?
         .into_iter()
-        .map(|device| device.name.to_string())
-        .collect::<Vec<_>>();
+        .map(|device| device.name)
+        .collect::<Vec<String>>();
+    logging::log!("device list {:?}", res);
     Ok(res)
 }
 
 #[component]
 fn DeviceList() -> impl IntoView {
-    let device_list = create_local_resource(move || (), |_| async move { api_device_list().await });
+    let device_list = create_local_resource(move || (), |_| api_device_list());
 
     view! {
         <h1>"Devices"</h1>
-        {move || match device_list.get() {
-            None => view! { <p>"Searching for devices..."</p> }.into_view(),
-            Some(devices) => view! {
-                <ul>
-                    {devices.into_iter()
-                        .map(|device| view! {<li>{device}</li>})
-                        .collect_view()}
-                </ul>
-            }.into_view()
-        }}
+        <ul> {
+            move || match device_list.get() {
+                None => view! { <p>"Searching for devices..."</p> }.into_view(),
+                Some(Ok(devices)) => view! {
+                        {devices.into_iter()
+                            .map(|device| view! {<li>{device}</li>})
+                            .collect_view()}
+                }.into_view(),
+                Some(Err(_)) => view! {<p>"Error finding devices"</p>}.into_view(),
+            }
+        }
+        </ul>
         <button on:click=move |_| { device_list.refetch() }>
             "Refresh"
         </button>
