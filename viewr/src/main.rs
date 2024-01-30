@@ -25,6 +25,7 @@ async fn api_device_status_list() -> Result<Vec<(String, String)>> {
 
     let mut statuses = vec![];
 
+    // TODO async request to get that device's status
     for device_id in device_ids {
         statuses.push((device_id.clone(), "Reporting".to_string()));
     }
