@@ -62,7 +62,11 @@ pub fn ConnectionDeviceStatusList() -> impl IntoView {
                                             {connection}
                                             {
                                                 device_status_list.iter().map(|(device_id, status)| {
-                                                    view!{{device_id} | {status}}
+                                                    let status_style = format!("tooltip device-status {status}");
+                                                    view!{
+                                                        <div class=status_style>DEV
+                                                            <span class="tooltiptext">{device_id}</span>
+                                                        </div>}
                                                 }).collect_view()
                                             }
                                         </li>
