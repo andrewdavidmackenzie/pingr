@@ -1,14 +1,16 @@
-use worker::*;
-use std::fmt::{Display, Formatter};
-use serde_derive::{Deserialize, Serialize};
-use worker::durable_object;
-use data_model::MonitorReport;
 use crate::device::DeviceState::{New, Offline, Reporting, Stopped};
+use data_model::MonitorReport;
+use serde_derive::{Deserialize, Serialize};
 use std::borrow::Cow;
+use std::fmt::{Display, Formatter};
+use worker::durable_object;
+use worker::*;
 
 const MARGIN_SECONDS: u64 = 5;
 
 const DEVICE_STATUS_KV_NAMESPACE: &str = "DEVICE_STATUS";
+const CONNECTION_DEVICE_STATUS_KV_NAMESPACE: &str = "CONNECTION_DEVICE_STATUS";
+const DEVICE_ID_CONNECTION_MAPPING_KV_NAMESPACE: &str = "DEVICE_ID_CONNECTION_MAPPING";
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 enum DeviceState {
@@ -64,14 +66,22 @@ impl DurableObject for Device {
         let report_type = path.split('/').nth(2).unwrap();
 
         // Retrieve previous device_state. If not present (first time!), then New
-        self.device_state = self.state.storage().get("device_state").await.unwrap_or(New);
+        self.device_state = self
+            .state
+            .storage()
+            .get("device_state")
+            .await
+            .unwrap_or(New);
         console_log!("State: {}", self.device_state);
 
         let mut period = None;
+        let mut connection = None;
         let url = req.url().unwrap();
         for query_pair in url.query_pairs() {
-            if let Cow::Borrowed("period") = query_pair.0 {
-                period = query_pair.1.parse::<u64>().ok();
+            match query_pair.0 {
+                Cow::Borrowed("connection") => connection = Some(query_pair.1),
+                Cow::Borrowed("period") => period = query_pair.1.parse::<u64>().ok(),
+                _ => {}
             }
         }
 
@@ -81,19 +91,31 @@ impl DurableObject for Device {
                 match form.get("report") {
                     Some(report_entry) => match report_entry {
                         FormEntry::Field(report_string) => {
-                            let report_json: serde_json::Result<MonitorReport> = serde_json::from_str(&report_string);
+                            let report_json: serde_json::Result<MonitorReport> =
+                                serde_json::from_str(&report_string);
                             match report_json {
-                                Ok(report) => self.process_report(report_type, period, Some(report)).await,
-                                Err(_) => Response::error("Could not deserialize report", 400)
+                                Ok(report) => {
+                                    self.process_report(
+                                        report_type,
+                                        period,
+                                        Some(report),
+                                        connection,
+                                    )
+                                    .await
+                                }
+                                Err(_) => Response::error("Could not deserialize report", 400),
                             }
-                        },
-                        _ => Response::error("Unexpected File attached to report", 400)
-                    }
-                    _ => Response::error("Unexpected FormEntry in report FormData", 400)
+                        }
+                        _ => Response::error("Unexpected File attached to report", 400),
+                    },
+                    _ => Response::error("Unexpected FormEntry in report FormData", 400),
                 }
-            },
-            Method::Get => self.process_report(report_type, period, None).await,
-            _ => Response::error("Unexpected HTTP Method used", 400)
+            }
+            Method::Get => {
+                self.process_report(report_type, period, None, connection)
+                    .await
+            }
+            _ => Response::error("Unexpected HTTP Method used", 400),
         }
     }
 
@@ -102,61 +124,111 @@ impl DurableObject for Device {
         console_log!("\nDO ID: {}", self.state.id().to_string());
 
         // Retrieve previous device_state. If not present (first time!), then start in New
-        self.device_state = self.state.storage().get("device_state").await.unwrap_or(New);
+        self.device_state = self
+            .state
+            .storage()
+            .get("device_state")
+            .await
+            .unwrap_or(New);
         console_log!("State: {}", self.device_state);
 
-        self.process_report("alarm", None, None).await
+        self.process_report("alarm", None, None, None).await
     }
 }
 
 impl Device {
     // Process a new report or an alarm - implementing the state machine, changing to the new state when required
     // and logging console warnings for states that should not happen if everything is working perfectly
-    async fn process_report(&mut self, report_type: &str, period_seconds: Option<u64>, _report: Option<MonitorReport>)
-        -> Result<Response> {
+    async fn process_report(
+        &mut self,
+        report_type: &str,
+        period_seconds: Option<u64>,
+        _report: Option<MonitorReport>,
+        connection: Option<Cow<'_, str>>,
+    ) -> Result<Response> {
         console_log!("Event: {}", report_type);
 
         // Note: `New` is not one of the possible states set below, so if this is the first time the DO for this
         // device runs it MUST result in a different state (Reporting would be normal, but others in error cases)
         // and so the new state (`New` not being one of them) MUST be stored and a state change event generated
         match report_type {
-            "ongoing" => { // OnGoing report
+            "ongoing" => {
+                // OnGoing report
                 if let Some(period) = period_seconds {
-                    self.state.storage().set_alarm(((period + MARGIN_SECONDS) * 1000) as i64).await?;
+                    self.state
+                        .storage()
+                        .set_alarm(((period + MARGIN_SECONDS) * 1000) as i64)
+                        .await?;
                 }
-                self.new_device_state(Reporting).await?;
-            },
-            "stop" => { // Stop report
+                self.new_device_state(Reporting, connection).await?;
+            }
+            "stop" => {
+                // Stop report
                 if self.device_state == Stopped {
                     console_warn!("Stop Report with device in Stopped state");
                 }
                 self.state.storage().delete_alarm().await?;
-                self.new_device_state(Stopped).await?;
+                self.new_device_state(Stopped, connection).await?;
             }
-            _ => {
-                match &self.device_state {
-                    New => console_warn!("Report overdue with device in New state"),
-                    Stopped => console_warn!("Report overdue with device in Stopped state"),
-                    Offline => console_warn!("Report overdue with device in Offline state"),
-                    Reporting => self.new_device_state(Offline).await?,
-                }
-            }
+            _ => match &self.device_state {
+                New => console_warn!("Report overdue with device in New state"),
+                Stopped => console_warn!("Report overdue with device in Stopped state"),
+                Offline => console_warn!("Report overdue with device in Offline state"),
+                Reporting => self.new_device_state(Offline, connection).await?,
+            },
         }
 
-        Response::ok(format!("Device ID: {} State: {}", self.state.id().to_string(), self.device_state))
+        Response::ok(format!(
+            "Device ID: {} State: {}",
+            self.state.id().to_string(),
+            self.device_state
+        ))
     }
 
     // change the state of the tracked device to the new state, if it is different from the current state
     // then store the state for use in future instances of this DurableObject
-    async fn new_device_state(&mut self, new_state: DeviceState) -> Result<()> {
+    async fn new_device_state(
+        &mut self,
+        new_state: DeviceState,
+        connection: Option<Cow<'_, str>>,
+    ) -> Result<()> {
         if self.device_state != new_state {
-            console_log!("State transition from {} to {}", self.device_state, new_state);
+            console_log!(
+                "State transition from {} to {}",
+                self.device_state,
+                new_state
+            );
             self.device_state = new_state;
+
             // Store the state in the DO's storage for next time around
-            self.state.storage().put("device_state", &self.device_state).await?;
+            self.state
+                .storage()
+                .put("device_state", &self.device_state)
+                .await?;
+
             // Store the state in KV store that can be read elsewhere
             let kv = self.env.kv(DEVICE_STATUS_KV_NAMESPACE)?;
-            kv.put(&self.state.id().to_string(), &self.device_state)?.execute().await?;
+            kv.put(&self.state.id().to_string(), &self.device_state)?
+                .execute()
+                .await?;
+
+            if let Some(con) = connection {
+                // Store the Connection::DeviceID -> status in KV store
+                let kv = self.env.kv(CONNECTION_DEVICE_STATUS_KV_NAMESPACE)?;
+                kv.put(
+                    &format!("{}::{}", con.to_string(), self.state.id().to_string()),
+                    &self.device_state,
+                )?
+                .execute()
+                .await?;
+
+                // Store the DeviceID -> Connection mapping in KV store
+                let kv = self.env.kv(DEVICE_ID_CONNECTION_MAPPING_KV_NAMESPACE)?;
+                kv.put(&self.state.id().to_string(), con.to_string())?
+                    .execute()
+                    .await?;
+            }
+
             Ok(())
         } else {
             Ok(())
