@@ -1,16 +1,16 @@
+mod connections;
 mod devices;
-mod ssids;
+use connections::ConnectionDeviceStatusList;
 use devices::DeviceStatusList;
 use leptos::*;
 use leptos_router::*;
-use ssids::SSIDStatusList;
 
 #[component]
 pub fn App() -> impl IntoView {
     view! {
         <Router>
             <Routes>
-                <Route path="/" view=SSIDStatusList/>
+                <Route path="/" view=ConnectionDeviceStatusList/>
                 <Route path="/devices" view=DeviceStatusList/>
             </Routes>
         </Router>

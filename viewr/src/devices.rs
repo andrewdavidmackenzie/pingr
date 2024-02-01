@@ -71,7 +71,7 @@ pub fn DeviceStatusList() -> impl IntoView {
                     if devices.is_empty() {
                         view!{ <p>No devices found</p> }.into_view()
                     } else {
-                        // TODO move all this into an api method
+                        // TODO move all this into the api method
                         let mut status_map = HashMap::<&str, Vec<&String>>::new();
                         for (device_id, device_status) in &devices {
                             status_map.entry(device_status)
