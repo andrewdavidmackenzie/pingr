@@ -1,21 +1,16 @@
-pub mod devices;
+mod devices;
+mod ssids;
 use devices::DeviceStatusList;
 use leptos::*;
 use leptos_router::*;
-
-#[component]
-fn Home() -> impl IntoView {
-    view! {
-        <h1>HOME PAGE</h1>
-    }
-}
+use ssids::SSIDStatusList;
 
 #[component]
 pub fn App() -> impl IntoView {
     view! {
         <Router>
             <Routes>
-                <Route path="/" view=Home/>
+                <Route path="/" view=SSIDStatusList/>
                 <Route path="/devices" view=DeviceStatusList/>
             </Routes>
         </Router>
