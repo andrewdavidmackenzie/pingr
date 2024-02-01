@@ -193,6 +193,8 @@ impl Device {
         connection: Option<Cow<'_, str>>,
     ) -> Result<()> {
         if self.device_state != new_state {
+            let id = &self.state.id().to_string();
+
             console_log!(
                 "State transition from {} to {}",
                 self.device_state,
@@ -208,30 +210,21 @@ impl Device {
 
             // Store the state in KV store that can be read elsewhere
             let kv = self.env.kv(DEVICE_STATUS_KV_NAMESPACE)?;
-            kv.put(&self.state.id().to_string(), &self.device_state)?
-                .execute()
-                .await?;
+            kv.put(id, &self.device_state)?.execute().await?;
 
             if let Some(con) = connection {
                 // Store the Connection::DeviceID -> status in KV store
                 let kv = self.env.kv(CONNECTION_DEVICE_STATUS_KV_NAMESPACE)?;
-                kv.put(
-                    &format!("{}::{}", con.to_string(), self.state.id().to_string()),
-                    &self.device_state,
-                )?
-                .execute()
-                .await?;
+                kv.put(&format!("{}::{}", con.to_string(), id), &self.device_state)?
+                    .execute()
+                    .await?;
 
                 // Store the DeviceID -> Connection mapping in KV store
                 let kv = self.env.kv(DEVICE_ID_CONNECTION_MAPPING_KV_NAMESPACE)?;
-                kv.put(&self.state.id().to_string(), con.to_string())?
-                    .execute()
-                    .await?;
+                kv.put(id, con.to_string())?.execute().await?;
             }
-
-            Ok(())
-        } else {
-            Ok(())
         }
+
+        Ok(())
     }
 }
