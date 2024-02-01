@@ -2,5 +2,5 @@ monitor= "Connection"
 
 [report]
 period_seconds = 60
-base_url = "http://localhost:8787"
-#base_url = "https://collectr.mackenzie-serres.workers.dev"
+#base_url = "http://localhost:8787"
+base_url = "https://collectr.mackenzie-serres.workers.dev"
