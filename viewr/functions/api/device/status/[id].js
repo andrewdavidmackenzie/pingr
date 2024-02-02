@@ -5,7 +5,7 @@ export async function onRequestGet(context) {
     return new Response('Not found', { status: 404 })
   }
 
-  const status = await context.env.DEVICE_ID_CONNECTION_MAPPING.get(device_id);
+  const status = await context.env.DEVICE_STATUS.get(device_id);
 
   if (!status) {
     return new Response('Not found', { status: 404 })

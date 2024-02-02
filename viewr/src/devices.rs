@@ -20,6 +20,31 @@ async fn api_device_list() -> Result<Vec<String>> {
     Ok(res)
 }
 
+#[component]
+#[allow(non_snake_case)]
+fn DeviceList() -> impl IntoView {
+    let device_list = create_local_resource(move || (), |_| api_device_list());
+
+    view! {
+        <h1>"Device Status"</h1> {
+            move || match device_list.get() {
+                None => view! { <p>"Searching for devices..."</p> }.into_view(),
+                Some(Ok(devices)) => view! {
+                    <ul>
+                        {devices.into_iter()
+                            .map(|device| view! {<li>{device}</li>})
+                            .collect_view()}
+                    </ul>
+                }.into_view(),
+                Some(Err(_)) => view! {<p>"Error finding devices"</p>}.into_view(),
+            }
+        }
+        <button on:click=move |_| { device_list.refetch() }>
+            "Refresh"
+        </button>
+    }
+}
+
 async fn api_device_status_get(key: &str) -> Result<String> {
     let res = reqwasm::http::Request::get(&format!("/api/device/status/{key}"))
         .send()
@@ -46,36 +71,11 @@ async fn api_device_status_list() -> Result<Vec<(String, String)>> {
 
 #[component]
 #[allow(non_snake_case)]
-fn DeviceList() -> impl IntoView {
-    let device_list = create_local_resource(move || (), |_| api_device_list());
-
-    view! {
-        <h1>"Device Status"</h1> {
-            move || match device_list.get() {
-                None => view! { <p>"Searching for devices..."</p> }.into_view(),
-                Some(Ok(devices)) => view! {
-                    <ul>
-                        {devices.into_iter()
-                            .map(|device| view! {<li>{device}</li>})
-                            .collect_view()}
-                    </ul>
-                }.into_view(),
-                Some(Err(_)) => view! {<p>"Error finding devices"</p>}.into_view(),
-            }
-        }
-        <button on:click=move |_| { device_list.refetch() }>
-            "Refresh"
-        </button>
-    }
-}
-
-#[component]
-#[allow(non_snake_case)]
 pub fn DeviceStatusList() -> impl IntoView {
     let device_statuses = create_local_resource(move || (), |_| api_device_status_list());
 
     view! {
-        <h1>"Devices"</h1> {
+        <h1>"Device Status"</h1> {
             move || match device_statuses.get() {
                 None => view!{ <p>"Searching for devices..."</p> }.into_view(),
                 Some(Ok(devices)) => {
@@ -89,7 +89,7 @@ pub fn DeviceStatusList() -> impl IntoView {
                                 .or_insert_with(Vec::new)
                                 .push(device_id);
                         }
-                        ["Reporting", "NoReporting", "Stopped"].map(|status| {
+                        ["Reporting", "NotReporting", "Stopped"].map(|status| {
                             match status_map.get(status) {
                                 Some(id_list) => {
                                     view!{
