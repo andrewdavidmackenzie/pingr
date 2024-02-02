@@ -89,7 +89,7 @@ pub fn DeviceStatusList() -> impl IntoView {
                                 .or_insert_with(Vec::new)
                                 .push(device_id);
                         }
-                        ["Reporting", "NotReporting", "Stopped"].map(|status| {
+                        ["Reporting", "Offline", "Stopped"].map(|status| {
                             match status_map.get(status) {
                                 Some(id_list) => {
                                     view!{
