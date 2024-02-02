@@ -20,14 +20,25 @@ async fn api_device_list() -> Result<Vec<String>> {
     Ok(res)
 }
 
+async fn api_device_status_get(key: &str) -> Result<String> {
+    let res = reqwasm::http::Request::get(&format!("/api/device/status/{key}"))
+        .send()
+        .await?
+        .json::<String>()
+        .await?;
+    Ok(res)
+}
+
 async fn api_device_status_list() -> Result<Vec<(String, String)>> {
     let device_ids = api_device_list().await?;
 
     let mut statuses = vec![];
 
-    // TODO async request to get that device's status
     for device_id in device_ids {
-        statuses.push((device_id.clone(), "Reporting".to_string()));
+        statuses.push((
+            device_id.clone(),
+            api_device_status_get(&device_id.to_string()).await?,
+        ));
     }
 
     Ok(statuses)
@@ -39,7 +50,7 @@ fn DeviceList() -> impl IntoView {
     let device_list = create_local_resource(move || (), |_| api_device_list());
 
     view! {
-        <h1>"Device Statusx"</h1> {
+        <h1>"Device Status"</h1> {
             move || match device_list.get() {
                 None => view! { <p>"Searching for devices..."</p> }.into_view(),
                 Some(Ok(devices)) => view! {
@@ -78,7 +89,7 @@ pub fn DeviceStatusList() -> impl IntoView {
                                 .or_insert_with(Vec::new)
                                 .push(device_id);
                         }
-                        ["Offline", "Reporting", "Stopped"].map(|status| {
+                        ["Reporting", "NoReporting", "Stopped"].map(|status| {
                             match status_map.get(status) {
                                 Some(id_list) => {
                                     view!{

@@ -8,6 +8,15 @@ struct ConnectionDevice {
     name: String,
 }
 
+async fn api_connection_device_status_get(key: &str) -> Result<String> {
+    let res = reqwasm::http::Request::get(&format!("/api/connection/{key}"))
+        .send()
+        .await?
+        .json::<String>()
+        .await?;
+    Ok(res)
+}
+
 async fn api_connection_device_list() -> Result<Vec<String>> {
     let res = reqwasm::http::Request::get("/api/connection/list")
         .send()
@@ -25,13 +34,15 @@ async fn api_connection_device_status_list() -> Result<HashMap<String, Vec<(Stri
 
     let mut statuses = HashMap::<String, Vec<(String, String)>>::new();
 
-    // TODO async request to get that connection_device's status
     for connection_device_id in connection_device_ids {
         if let Some((connection, device)) = connection_device_id.split_once("::") {
             statuses
                 .entry(connection.to_string())
                 .or_insert_with(Vec::new)
-                .push((device.to_string(), "Reporting".to_string()));
+                .push((
+                    device.to_string(),
+                    api_connection_device_status_get(&connection_device_id.to_string()).await?,
+                ));
         }
     }
 
