@@ -9,12 +9,21 @@ use worker::*;
 const MARGIN_SECONDS: u64 = 5;
 
 const DEVICE_STATUS_KV_NAMESPACE: &str = "DEVICE_STATUS";
-const CONNECTION_DEVICE_STATUS_KV_NAMESPACE: &str = "CONNECTION_DEVICE_STATUS";
-const DEVICE_ID_CONNECTION_MAPPING_KV_NAMESPACE: &str = "DEVICE_ID_CONNECTION_MAPPING";
 pub const STATE_CHANGES_QUEUE: &str = "STATE_CHANGES";
 
+/// [Device] implements a Cloudflare DistributedObject that tracks the state of one monitoring device.
+/// The state is maintained inside the DO itself, in case it is called multiple times without being
+/// shutdown between them.
+/// The device's status is persisted in the `DEVICE_STATUS` KV namespace. This enables picking up
+/// the previous status between DO invocations, and also exposed the status to other workers and pages
+/// projects for further processing, notifications, and visualization.
+///
+/// It uses the `alarm` feature of DistributedObjects to put the devices state into `NotReporting` if
+/// a report is overdue.
+///
+/// It sends any state change to the `STATE_CHANGES` queue, where a worker can do further processing
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
-enum DeviceState {
+pub enum DeviceState {
     /// New signifies that the state for this Device has not been loaded from storage yet
     /// and it maybe the first time this DO for it runs, hence there is nothing in storage
     /// This ensures that the first time the DO runs, as different state MUST result and the
@@ -31,18 +40,19 @@ enum DeviceState {
 impl Display for DeviceState {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            DeviceState::New => write!(f, "New"),
-            DeviceState::Stopped => write!(f, "Stopped"),
-            DeviceState::Reporting => write!(f, "Reporting"),
-            DeviceState::Offline => write!(f, "Offline"),
+            New => write!(f, "New"),
+            Stopped => write!(f, "Stopped"),
+            Reporting => write!(f, "Reporting"),
+            Offline => write!(f, "Offline"),
         }
     }
 }
 
 #[derive(Serialize, Debug, Clone, Deserialize)]
 pub struct StateChange {
-    id: String,
-    new_state: DeviceState,
+    pub id: String,
+    pub new_state: DeviceState,
+    pub connection: Option<String>,
 }
 
 #[durable_object]
@@ -160,28 +170,29 @@ impl Device {
         // and so the new state (`New` not being one of them) MUST be stored and a state change event generated
         match report_type {
             "ongoing" => {
-                // OnGoing report
+                // An OnGoing report was received
                 if let Some(period) = period_seconds {
                     self.state
                         .storage()
                         .set_alarm(((period + MARGIN_SECONDS) * 1000) as i64)
                         .await?;
                 }
-                self.new_device_state(Reporting, connection).await?;
+                self.new_state(Reporting, connection).await?;
             }
             "stop" => {
-                // Stop report
+                // A Stop report was received
                 if self.device_state == Stopped {
                     console_warn!("Stop Report with device in Stopped state");
                 }
                 self.state.storage().delete_alarm().await?;
-                self.new_device_state(Stopped, connection).await?;
+                self.new_state(Stopped, connection).await?;
             }
             _ => match &self.device_state {
+                // alarm was sent - so an expected report didn't arrive by the expected time
                 New => console_warn!("Report overdue with device in New state"),
                 Stopped => console_warn!("Report overdue with device in Stopped state"),
                 Offline => console_warn!("Report overdue with device in Offline state"),
-                Reporting => self.new_device_state(Offline, connection).await?,
+                Reporting => self.new_state(Offline, connection).await?,
             },
         }
 
@@ -194,7 +205,7 @@ impl Device {
 
     // change the state of the tracked device to the new state, if it is different from the current state
     // then store the state for use in future instances of this DurableObject
-    async fn new_device_state(
+    async fn new_state(
         &mut self,
         new_state: DeviceState,
         connection: Option<Cow<'_, str>>,
@@ -203,10 +214,11 @@ impl Device {
             let id = &self.state.id().to_string();
 
             console_log!(
-                "State transition from {} to {}",
+                "Device DO: State transition from {} to {}",
                 self.device_state,
                 new_state
             );
+
             self.device_state = new_state;
 
             // Store the state in the DO's storage for next time around
@@ -215,29 +227,18 @@ impl Device {
                 .put("device_state", &self.device_state)
                 .await?;
 
-            // Send the state to the STATE_CHANGES queue for background processing triggered by the change
-            let queue = self.env.queue(STATE_CHANGES_QUEUE)?;
-            let state_change = StateChange {
-                id: id.to_string(),
-                new_state: self.device_state.clone(),
-            };
-            queue.send(&state_change).await?;
-
             // Store the state in KV store that can be read elsewhere
             let kv = self.env.kv(DEVICE_STATUS_KV_NAMESPACE)?;
             kv.put(id, &self.device_state)?.execute().await?;
 
-            if let Some(con) = connection {
-                // Store the Connection::DeviceID -> status in KV store
-                let kv = self.env.kv(CONNECTION_DEVICE_STATUS_KV_NAMESPACE)?;
-                kv.put(&format!("{}::{}", con.to_string(), id), &self.device_state)?
-                    .execute()
-                    .await?;
-
-                // Store the DeviceID -> Connection mapping in KV store
-                let kv = self.env.kv(DEVICE_ID_CONNECTION_MAPPING_KV_NAMESPACE)?;
-                kv.put(id, con.to_string())?.execute().await?;
-            }
+            // Send the new state to the STATE_CHANGES queue for background processing
+            let queue = self.env.queue(STATE_CHANGES_QUEUE)?;
+            let state_change = StateChange {
+                id: id.to_string(),
+                new_state: self.device_state.clone(),
+                connection: connection.map(|s| s.to_string()),
+            };
+            queue.send(&state_change).await?;
         }
 
         Ok(())

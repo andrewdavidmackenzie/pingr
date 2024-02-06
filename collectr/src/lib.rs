@@ -4,6 +4,9 @@ use worker::*;
 
 mod device;
 
+const CONNECTION_DEVICE_STATUS_KV_NAMESPACE: &str = "CONNECTION_DEVICE_STATUS";
+const DEVICE_ID_CONNECTION_MAPPING_KV_NAMESPACE: &str = "DEVICE_ID_CONNECTION_MAPPING";
+
 #[event(fetch)]
 async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     let router = Router::new();
@@ -40,13 +43,48 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         .await
 }
 
-// Consume messages from "state-changes" using the "STATE_CHANGES" binding
+/*
+async fn send_notification_email(to: &str, state_change: &StateChange) -> Result<()> {
+    let mut request = Request::new("https://api.mailchannels.net/tx/v1/send", Method::Post)?;
+    let mut request_headers = request.headers_mut()?;
+    let mut email_headers = Headers::new();
+    email_headers.append("content-type", "application/json");
+    *request_headers = email_headers;
+
+    /*
+    {
+        body: JSON.stringify({
+            personalizations: [
+                { to: [
+                    {
+                        email: "test@example.com",
+                        name: "Test Recipient"
+                    }
+                    ],
+                },
+            ],
+            from: {
+                email: "sender@example.com",
+                name: "Workers - MailChannels integration",
+            },
+            subject: "Look! No servers",
+            content: [
+                {
+                    type: "text/plain",
+                    value: "And no email service accounts and all for free too!",
+                },
+            ],
+        }),
+    });
+    */
+
+    Ok(())
+}
+ */
+
+// Consume messages from the "state-changes" queue (this worker setup to consume from that queue in Dashboard)
 #[event(queue)]
-pub async fn main(
-    message_batch: MessageBatch<StateChange>,
-    _env: Env,
-    _ctx: Context,
-) -> Result<()> {
+pub async fn main(message_batch: MessageBatch<StateChange>, env: Env, _ctx: Context) -> Result<()> {
     // Deserialize the message batch
     let messages = message_batch.messages()?;
 
@@ -59,6 +97,22 @@ pub async fn main(
             message.id,
             message.timestamp.to_string()
         );
+
+        let state_change: StateChange = message.body;
+        if let Some(con) = state_change.connection {
+            // Store the Connection::DeviceID -> status in KV store
+            let kv = env.kv(CONNECTION_DEVICE_STATUS_KV_NAMESPACE)?;
+            kv.put(
+                &format!("{}::{}", con.to_string(), state_change.id),
+                state_change.new_state,
+            )?
+            .execute()
+            .await?;
+
+            // Store the DeviceID -> Connection mapping in KV store
+            let kv = env.kv(DEVICE_ID_CONNECTION_MAPPING_KV_NAMESPACE)?;
+            kv.put(&state_change.id, con.to_string())?.execute().await?;
+        }
     }
 
     // Retry all messages
