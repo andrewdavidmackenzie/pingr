@@ -6,6 +6,7 @@ use leptos::*;
 use leptos_router::*;
 
 #[component]
+#[allow(non_snake_case)]
 pub fn App() -> impl IntoView {
     view! {
         <Router>
