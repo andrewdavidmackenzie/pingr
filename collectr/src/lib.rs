@@ -1,3 +1,4 @@
+use crate::device::StateChange;
 use std::borrow::Cow;
 use worker::*;
 
@@ -37,4 +38,30 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         })
         .run(req, env)
         .await
+}
+
+// Consume messages from "state-changes" using the "STATE_CHANGES" binding
+#[event(queue)]
+pub async fn main(
+    message_batch: MessageBatch<StateChange>,
+    _env: Env,
+    _ctx: Context,
+) -> Result<()> {
+    // Deserialize the message batch
+    let messages = message_batch.messages()?;
+
+    // Loop through the messages
+    for message in messages {
+        // Log the message and meta data
+        console_log!(
+            "Got message {:?}, with id {} and timestamp: {}",
+            message.body,
+            message.id,
+            message.timestamp.to_string()
+        );
+    }
+
+    // Retry all messages
+    message_batch.retry_all();
+    Ok(())
 }

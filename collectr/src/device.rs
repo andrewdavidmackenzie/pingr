@@ -11,6 +11,7 @@ const MARGIN_SECONDS: u64 = 5;
 const DEVICE_STATUS_KV_NAMESPACE: &str = "DEVICE_STATUS";
 const CONNECTION_DEVICE_STATUS_KV_NAMESPACE: &str = "CONNECTION_DEVICE_STATUS";
 const DEVICE_ID_CONNECTION_MAPPING_KV_NAMESPACE: &str = "DEVICE_ID_CONNECTION_MAPPING";
+pub const STATE_CHANGES_QUEUE: &str = "STATE_CHANGES";
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 enum DeviceState {
@@ -36,6 +37,12 @@ impl Display for DeviceState {
             DeviceState::Offline => write!(f, "Offline"),
         }
     }
+}
+
+#[derive(Serialize, Debug, Clone, Deserialize)]
+pub struct StateChange {
+    id: String,
+    new_state: DeviceState,
 }
 
 #[durable_object]
@@ -207,6 +214,14 @@ impl Device {
                 .storage()
                 .put("device_state", &self.device_state)
                 .await?;
+
+            // Send the state to the STATE_CHANGES queue for background processing triggered by the change
+            let queue = self.env.queue(STATE_CHANGES_QUEUE)?;
+            let state_change = StateChange {
+                id: id.to_string(),
+                new_state: self.device_state.clone(),
+            };
+            queue.send(&state_change).await?;
 
             // Store the state in KV store that can be read elsewhere
             let kv = self.env.kv(DEVICE_STATUS_KV_NAMESPACE)?;

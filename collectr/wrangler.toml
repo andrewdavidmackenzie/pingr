@@ -14,6 +14,10 @@ kv_namespaces = [
     { binding = "CONNECTION_LIST", id = "f5912a90df384de1a811360b90d35368" }
 ]
 
+[[queues.producers]]
+queue = "state-changes"
+binding = "STATE_CHANGES"
+
 [[migrations]]
 tag = "v1"
 new_classes = ["Device"]
