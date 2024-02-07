@@ -11,8 +11,7 @@ ssids = ["wifiscanner"]
 
 [dependencies]
 data_model = { path = "../data_model"}
-
-mac_address = "1.1.5"
+machineid-rs = "1.2.4"
 
 # for reading config from a file - put under a flag for embedded options
 serde_derive = "~1.0"

@@ -1,7 +1,7 @@
 use crate::config::{Config, MonitorSpec};
 use curl::easy::Easy;
 use data_model::{Connection, ConnectionReport, DeviceId, MonitorReport, ReportType, Stats};
-use mac_address::get_mac_address;
+use machineid_rs::{Encryption, HWIDComponent, IdBuilder};
 use serde_json::json;
 use std::io;
 use std::io::Read;
@@ -11,6 +11,7 @@ use wifiscanner::Wifi;
 
 pub(crate) fn monitor_loop(config: Config, term_receiver: Receiver<()>) -> Result<(), io::Error> {
     let device_id = get_device_id()?;
+    println!("Device ID = {device_id}");
 
     // A "sleep", interruptible by receiving a message to exit. Normal looping will produce
     // a timeout error, in which case send the periodic report.
@@ -149,13 +150,11 @@ fn send_report(
 }
 
 fn get_device_id() -> Result<DeviceId, io::Error> {
-    match get_mac_address() {
-        Ok(Some(ma)) => Ok(DeviceId::MAC(ma.bytes())),
-        _ => Err(io::Error::new(
-            io::ErrorKind::NotFound,
-            "DeviceId could not be determined",
-        )),
-    }
+    let mut builder = IdBuilder::new(Encryption::SHA256);
+    builder.add_component(HWIDComponent::CPUID);
+    builder
+        .build("device_id")
+        .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not build unique device_id"))
 }
 
 #[cfg(target_os = "macos")]

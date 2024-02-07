@@ -1,29 +1,19 @@
 use std::fmt::{Display, Formatter};
 
 // put under option
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Deserialize, Serialize};
 
-pub enum DeviceId {
-    MAC([u8;6])
-}
-
-impl Display for DeviceId {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            DeviceId::MAC(mac) => write!(f, "MAC({:?})", mac)
-        }
-    }
-}
+pub type DeviceId = String;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Stats {
-    pub power_dbs: i16
+    pub power_dbs: i16,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Connection {
     SSID(String),
-    Ethernet(String)
+    Ethernet(String),
 }
 
 impl Display for Connection {
@@ -44,7 +34,7 @@ pub struct ConnectionReport {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ReportType {
     Stop,
-    OnGoing
+    OnGoing,
 }
 
 impl Display for ReportType {
