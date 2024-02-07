@@ -1,5 +1,8 @@
 use config::MonitorSpec;
-use service_manager::*;
+use service_manager::{
+    ServiceInstallCtx, ServiceLabel, ServiceManager, ServiceStartCtx, ServiceStopCtx,
+    ServiceUninstallCtx,
+};
 use std::path::PathBuf;
 use std::sync::mpsc::channel;
 use std::{env, io};
