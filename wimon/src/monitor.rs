@@ -202,9 +202,9 @@ fn get_ssid() -> Result<String, io::Error> {
 #[cfg(target_os = "linux")]
 fn parse_ssid(data: &str) -> Result<String, io::Error> {
     for line in data.lines() {
-        let mut pair = line.trim().split(" ");
-        if pair.nth(0).unwrap() == "ssid" {
-            return Ok(pair.nth(0).unwrap().trim().to_owned());
+        let mut pair = line.trim().split(' ');
+        if pair.next().unwrap() == "ssid" {
+            return Ok(pair.next().unwrap().trim().to_owned());
         }
     }
 
