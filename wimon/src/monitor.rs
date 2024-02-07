@@ -151,7 +151,9 @@ fn send_report(
 
 fn get_device_id() -> Result<DeviceId, io::Error> {
     let mut builder = IdBuilder::new(Encryption::SHA256);
-    builder.add_component(HWIDComponent::CPUID);
+    builder
+        .add_component(HWIDComponent::CPUID)
+        .add_component(HWIDComponent::SystemID);
     builder
         .build("device_id")
         .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not build unique device_id"))
