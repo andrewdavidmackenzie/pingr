@@ -1,8 +1,8 @@
-use std::{env, io};
-use std::path::PathBuf;
-use std::sync::mpsc::channel;
 use config::MonitorSpec;
 use service_manager::*;
+use std::path::PathBuf;
+use std::sync::mpsc::channel;
+use std::{env, io};
 
 mod config;
 mod monitor;
@@ -17,30 +17,41 @@ fn main() -> Result<(), io::Error> {
         None => {
             let config_file_path = config::find_config_file(config::CONFIG_FILE_NAME)?;
             run(&config_file_path)?;
-        },
+        }
         Some("install") => install_service(&service_name, &args[0])?,
         Some("uninstall") => uninstall_service(&service_name)?,
         _ => eprintln!("Invalid argument(s): '{}'", &args[1..].join(", ")),
     }
-
-    println!("Exiting");
 
     Ok(())
 }
 
 fn run(config_file_path: &PathBuf) -> Result<(), io::Error> {
     let config = config::read_config(config_file_path)?;
-    println!("Config file loaded from: \"{}\"", config_file_path.display());
-    println!("Monitor: {:?}", config.monitor_spec.as_ref().unwrap_or(&MonitorSpec::Connection));
+    println!(
+        "Config file loaded from: \"{}\"",
+        config_file_path.display()
+    );
+    println!(
+        "Monitor: {:?}",
+        config
+            .monitor_spec
+            .as_ref()
+            .unwrap_or(&MonitorSpec::Connection)
+    );
 
     let (tx, rx) = channel();
     ctrlc::set_handler(move || {
         println!("Control-C captured, sending Stop report");
         tx.send(()).expect("Could not send signal on channel.")
     })
-        .expect("Error setting Ctrl-C handler");
+    .expect("Error setting Ctrl-C handler");
 
-    monitor::monitor_loop(config, rx)
+    monitor::monitor_loop(config, rx)?;
+
+    println!("Exiting");
+
+    Ok(())
 }
 
 fn get_service_manager() -> Result<Box<dyn ServiceManager>, io::Error> {
@@ -56,8 +67,12 @@ fn install_service(service_name: &ServiceLabel, path_to_exec: &str) -> Result<()
     let manager = get_service_manager()?;
     let exec_path = PathBuf::from(path_to_exec).canonicalize()?;
     // Run from dir where exec is for now, so it should find the config file in ancestors path
-    let exec_dir = exec_path.parent()
-        .ok_or( io::Error::new(io::ErrorKind::NotFound, "Could not get exec dir"))?
+    let exec_dir = exec_path
+        .parent()
+        .ok_or(io::Error::new(
+            io::ErrorKind::NotFound,
+            "Could not get exec dir",
+        ))?
         .to_path_buf();
 
     // Install our service using the underlying service management platform
@@ -73,10 +88,13 @@ fn install_service(service_name: &ServiceLabel, path_to_exec: &str) -> Result<()
 
     // Start our service using the underlying service management platform
     manager.start(ServiceStartCtx {
-        label: service_name.clone()
+        label: service_name.clone(),
     })?;
 
-    println!("'service '{}' ('{}') installed and started", service_name, path_to_exec);
+    println!(
+        "'service '{}' ('{}') installed and started",
+        service_name, path_to_exec
+    );
 
     Ok(())
 }
@@ -87,16 +105,15 @@ fn uninstall_service(service_name: &ServiceLabel) -> Result<(), io::Error> {
 
     // Stop our service using the underlying service management platform
     manager.stop(ServiceStopCtx {
-        label: service_name.clone()
+        label: service_name.clone(),
     })?;
 
     // Uninstall our service using the underlying service management platform
     manager.uninstall(ServiceUninstallCtx {
-        label: service_name.clone()
+        label: service_name.clone(),
     })?;
 
     println!("service '{}' stopped and uninstalled", service_name);
 
     Ok(())
-
 }
