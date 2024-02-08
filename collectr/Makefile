@@ -1,6 +1,6 @@
 all:
 	cargo clippy
-	npx wrangler build
+	npx wrangler deploy --dry-run --outdir=dist
 
 local:
 	npx wrangler dev
