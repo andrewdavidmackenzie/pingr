@@ -78,14 +78,7 @@ impl DurableObject for Device {
         let path = req.path();
         let report_type = path.split('/').nth(2).unwrap();
 
-        // Retrieve previous device_state. If not present (first time!), then New
-        self.device_state = self
-            .state
-            .storage()
-            .get("device_state")
-            .await
-            .unwrap_or(New);
-        console_log!("State: {}", self.device_state);
+        self.load_state().await;
 
         let mut period = None;
         let mut connection = None;
@@ -135,16 +128,7 @@ impl DurableObject for Device {
     // A DO alarm expired - which should indicate that the device didn't report in time
     async fn alarm(&mut self) -> Result<Response> {
         console_log!("\nDO ID: {}", self.state.id().to_string());
-
-        // Retrieve previous device_state. If not present (first time!), then start in New
-        self.device_state = self
-            .state
-            .storage()
-            .get("device_state")
-            .await
-            .unwrap_or(New);
-        console_log!("State: {}", self.device_state);
-
+        self.load_state().await;
         self.process_report("alarm", None, None, None).await
     }
 }
@@ -234,5 +218,16 @@ impl Device {
         }
 
         Ok(())
+    }
+
+    // Retrieve previous device_state from DO storage. If not present (first time!), then [New]
+    async fn load_state(&mut self) {
+        self.device_state = self
+            .state
+            .storage()
+            .get("device_state")
+            .await
+            .unwrap_or(New);
+        console_log!("State: {}", self.device_state);
     }
 }
