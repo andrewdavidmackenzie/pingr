@@ -4,6 +4,7 @@ use worker::*;
 
 mod device;
 
+const DEVICE_STATUS_KV_NAMESPACE: &str = "DEVICE_STATUS";
 const CONNECTION_DEVICE_STATUS_KV_NAMESPACE: &str = "CONNECTION_DEVICE_STATUS";
 const DEVICE_ID_CONNECTION_MAPPING_KV_NAMESPACE: &str = "DEVICE_ID_CONNECTION_MAPPING";
 
@@ -23,9 +24,8 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
             let mut device_id = None;
             let url = req.url().unwrap();
             for query_pair in url.query_pairs() {
-                match query_pair.0 {
-                    Cow::Borrowed("device_id") => device_id = Some(query_pair.1),
-                    _ => {}
+                if let Cow::Borrowed("device_id") = query_pair.0 {
+                    device_id = Some(query_pair.1)
                 }
             }
 
@@ -83,6 +83,9 @@ async fn send_notification_email(to: &str, state_change: &StateChange) -> Result
  */
 
 // Consume messages from the "state-changes" queue (this worker setup to consume from that queue in Dashboard)
+// The device's state is persisted in the `DEVICE_STATUS` KV namespace. This enables picking up
+// the previous state between DO invocations, and also exposed the state to other workers and pages
+// projects for further processing, notifications, and visualization.
 #[event(queue)]
 pub async fn main(message_batch: MessageBatch<StateChange>, env: Env, _ctx: Context) -> Result<()> {
     // Deserialize the message batch
@@ -99,11 +102,18 @@ pub async fn main(message_batch: MessageBatch<StateChange>, env: Env, _ctx: Cont
         );
 
         let state_change: StateChange = message.body;
+
+        // Store the device state in KV store that can be read elsewhere
+        let kv = env.kv(DEVICE_STATUS_KV_NAMESPACE)?;
+        kv.put(&state_change.id, &state_change.new_state)?
+            .execute()
+            .await?;
+
         if let Some(con) = state_change.connection {
             // Store the Connection::DeviceID -> status in KV store
             let kv = env.kv(CONNECTION_DEVICE_STATUS_KV_NAMESPACE)?;
             kv.put(
-                &format!("{}::{}", con.to_string(), state_change.id),
+                &format!("{}::{}", con, state_change.id),
                 state_change.new_state,
             )?
             .execute()

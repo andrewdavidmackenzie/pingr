@@ -8,15 +8,11 @@ use worker::*;
 
 const MARGIN_SECONDS: u64 = 5;
 
-const DEVICE_STATUS_KV_NAMESPACE: &str = "DEVICE_STATUS";
 pub const STATE_CHANGES_QUEUE: &str = "STATE_CHANGES";
 
 /// [Device] implements a Cloudflare DistributedObject that tracks the state of one monitoring device.
 /// The state is maintained inside the DO itself, in case it is called multiple times without being
-/// shutdown between them.
-/// The device's status is persisted in the `DEVICE_STATUS` KV namespace. This enables picking up
-/// the previous status between DO invocations, and also exposed the status to other workers and pages
-/// projects for further processing, notifications, and visualization.
+/// shutdown between them, but is also stored and loaded from DO storage.
 ///
 /// It uses the `alarm` feature of DistributedObjects to put the devices state into `NotReporting` if
 /// a report is overdue.
@@ -226,10 +222,6 @@ impl Device {
                 .storage()
                 .put("device_state", &self.device_state)
                 .await?;
-
-            // Store the state in KV store that can be read elsewhere
-            let kv = self.env.kv(DEVICE_STATUS_KV_NAMESPACE)?;
-            kv.put(id, &self.device_state)?.execute().await?;
 
             // Send the new state to the STATE_CHANGES queue for background processing
             let queue = self.env.queue(STATE_CHANGES_QUEUE)?;
