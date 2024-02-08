@@ -109,20 +109,30 @@ pub async fn main(message_batch: MessageBatch<StateChange>, env: Env, _ctx: Cont
             .execute()
             .await?;
 
-        if let Some(con) = state_change.connection {
-            // Store the Connection::DeviceID -> status in KV store
-            let kv = env.kv(CONNECTION_DEVICE_STATUS_KV_NAMESPACE)?;
-            kv.put(
-                &format!("{}::{}", con, state_change.id),
-                state_change.new_state,
-            )?
-            .execute()
-            .await?;
+        let kv = env.kv(DEVICE_ID_CONNECTION_MAPPING_KV_NAMESPACE)?;
 
-            // Store the DeviceID -> Connection mapping in KV store
-            let kv = env.kv(DEVICE_ID_CONNECTION_MAPPING_KV_NAMESPACE)?;
-            kv.put(&state_change.id, con.to_string())?.execute().await?;
-        }
+        let con = match state_change.connection {
+            None => {
+                // If no connection is supplied - try and find one in the DeviceID to Connections table
+                let c = kv.get(&state_change.id).text().await?;
+                // and if none there then we can't get it so default to "Unknown"
+                c.unwrap_or("Unknown".to_string())
+            }
+            Some(c) => {
+                // Store the DeviceID -> Connection mapping in KV store
+                kv.put(&state_change.id, c.to_string())?.execute().await?;
+                c
+            }
+        };
+
+        // Store the Connection::DeviceID -> status in KV store
+        let kv = env.kv(CONNECTION_DEVICE_STATUS_KV_NAMESPACE)?;
+        kv.put(
+            &format!("{}::{}", con, state_change.id),
+            state_change.new_state,
+        )?
+        .execute()
+        .await?;
     }
 
     // Retry all messages

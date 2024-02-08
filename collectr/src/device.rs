@@ -127,7 +127,7 @@ impl DurableObject for Device {
 
     // A DO alarm expired - which should indicate that the device didn't report in time
     async fn alarm(&mut self) -> Result<Response> {
-        console_log!("\nDO ID: {}", self.state.id().to_string());
+        console_log!("Alarm DO ID: {}", self.state.id().to_string());
         self.load_state().await;
         self.process_report("alarm", None, None, None).await
     }
