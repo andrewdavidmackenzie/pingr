@@ -1,5 +1,5 @@
 [workspace]
-members = ["wimon", "collectr", "viewr"]
+members = ["wimon", "collectr", "viewr", "picomon"]
 default-members = ["wimon"]
 resolver = "2"
 
@@ -12,9 +12,9 @@ repository = "https://github.com/andrewdavidmackenzie/pingr/"
 readme = "README.md"
 edition = "2021"
 
-[profile.release]
+#[profile.release]
 # Tell `rustc` to optimize for small code size.
-opt-level = "s"
-lto = true
-strip = true
-codegen-units = 1
+#opt-level = "s"
+#lto = true
+##strip = true
+#codegen-units = 1
