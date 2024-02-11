@@ -1,10 +1,10 @@
-use std::{env, io};
+use serde_derive::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::time::Duration;
-use serde_derive::{Deserialize, Serialize};
+use std::{env, io};
 use url::Url;
 
-pub(crate) const CONFIG_FILE_NAME: &str = "wimon.toml";
+pub(crate) const CONFIG_FILE_NAME: &str = "monitor.toml";
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Default)]
 pub(crate) enum MonitorSpec {
@@ -14,21 +14,21 @@ pub(crate) enum MonitorSpec {
     #[default]
     Connection,
     /// Monitor a specific list of supplied SSIDs by name
-    SSIDs(Vec<String>)
+    SSIDs(Vec<String>),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub(crate) struct ReportSpec {
     period_seconds: Option<u64>,
-    #[serde(rename="base_url")]
+    #[serde(rename = "base_url")]
     report_url: Option<String>,
 }
 
 #[derive(Default, Serialize, Deserialize)]
 pub(crate) struct Config {
-    #[serde(rename="monitor")]
+    #[serde(rename = "monitor")]
     pub monitor_spec: Option<MonitorSpec>,
-    #[serde(rename="report")]
+    #[serde(rename = "report")]
     pub report_spec: Option<ReportSpec>,
     #[serde(skip)]
     pub period_duration: Duration,
@@ -50,15 +50,16 @@ pub(crate) fn find_config_file(file_name: &str) -> Result<PathBuf, io::Error> {
         dir = directory.parent().map(|p| p.to_path_buf());
     }
 
-    Err(io::Error::new(io::ErrorKind::NotFound,
-                       "wimon toml config file not found"))
+    Err(io::Error::new(
+        io::ErrorKind::NotFound,
+        "wimon toml config file not found",
+    ))
 }
 
 pub(crate) fn read_config(config_file_path: &PathBuf) -> Result<Config, io::Error> {
     let config_string = std::fs::read_to_string(config_file_path)?;
-    let mut config : Config = toml::from_str(&config_string).map_err(|_|
-        io::Error::new(io::ErrorKind::NotFound,
-                       "Could not parse toml config file"))?;
+    let mut config: Config = toml::from_str(&config_string)
+        .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not parse toml config file"))?;
 
     match &config.report_spec {
         Some(spec) => {
@@ -66,16 +67,14 @@ pub(crate) fn read_config(config_file_path: &PathBuf) -> Result<Config, io::Erro
                 None => Duration::from_secs(60),
                 Some(period) => Duration::from_secs(period),
             }
-        },
-        None => config.period_duration = Duration::from_secs(60)
+        }
+        None => config.period_duration = Duration::from_secs(60),
     }
 
     config.report_url = match &config.report_spec {
-        Some(spec) => {
-            match &spec.report_url {
-                Some(url_string) => Url::parse(url_string).ok(),
-                None => None,
-            }
+        Some(spec) => match &spec.report_url {
+            Some(url_string) => Url::parse(url_string).ok(),
+            None => None,
         },
         None => None,
     };
@@ -83,11 +82,10 @@ pub(crate) fn read_config(config_file_path: &PathBuf) -> Result<Config, io::Erro
     Ok(config)
 }
 
-
 #[cfg(test)]
 mod test {
+    use super::{Config, MonitorSpec, CONFIG_FILE_NAME};
     use std::path::PathBuf;
-    use super::{Config, CONFIG_FILE_NAME, MonitorSpec};
 
     #[test]
     fn config_monitor_connection() {
@@ -111,10 +109,11 @@ mod test {
     #[test]
     fn bundled_spec() {
         let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let root_dir = manifest_dir.parent().ok_or("Could not get parent dir")
+        let root_dir = manifest_dir
+            .parent()
+            .ok_or("Could not get parent dir")
             .expect("Could not get parent dir");
-        let config_string = std::fs::read_to_string(root_dir.join(CONFIG_FILE_NAME))
-            .unwrap();
+        let config_string = std::fs::read_to_string(root_dir.join(CONFIG_FILE_NAME)).unwrap();
         let config: Config = toml::from_str(&config_string).unwrap();
         assert_eq!(config.monitor_spec, Some(MonitorSpec::Connection));
         assert_eq!(config.report_spec.unwrap().period_seconds, Some(60));
