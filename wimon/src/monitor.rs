@@ -42,11 +42,7 @@ fn measure(config: &Config) -> Result<MonitorReport, io::Error> {
     };
 
     #[cfg(feature = "ssids")]
-    match &config
-        .monitor_spec
-        .as_ref()
-        .unwrap_or(&MonitorSpec::Connection)
-    {
+    match &config.monitor.as_ref().unwrap_or(&MonitorSpec::Connection) {
         MonitorSpec::All => {
             let wifis = wifiscanner::scan().unwrap_or_default();
             for wifi in wifis {
@@ -65,6 +61,14 @@ fn measure(config: &Config) -> Result<MonitorReport, io::Error> {
             let wifis = wifiscanner::scan().unwrap_or_default();
             for wifi in wifis {
                 if wifi.ssid == ssid {
+                    add_report(&mut report, &wifi);
+                }
+            }
+        }
+        MonitorSpec::SSID(ssid_name, _pass) => {
+            let wifis = wifiscanner::scan().unwrap_or_default();
+            for wifi in wifis {
+                if &wifi.ssid == ssid_name {
                     add_report(&mut report, &wifi);
                 }
             }

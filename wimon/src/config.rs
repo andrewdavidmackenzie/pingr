@@ -6,7 +6,10 @@ use url::Url;
 
 pub(crate) const CONFIG_FILE_NAME: &str = "monitor.toml";
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Default)]
+#[cfg_attr(
+    not(target = "thumbv6m-none-eabi"),
+    derive(Default, Serialize, Deserialize, Debug, PartialEq)
+)]
 pub(crate) enum MonitorSpec {
     /// Report status of all SSIDs that are detected at each monitoring moment
     All,
@@ -15,21 +18,26 @@ pub(crate) enum MonitorSpec {
     Connection,
     /// Monitor a specific list of supplied SSIDs by name
     SSIDs(Vec<String>),
+    /// Monitor this one SSID, with the supplied name and password
+    SSID(String, String),
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[cfg_attr(
+    not(target = "thumbv6m-none-eabi"),
+    derive(Serialize, Deserialize, Debug, PartialEq)
+)]
 pub(crate) struct ReportSpec {
     period_seconds: Option<u64>,
-    #[serde(rename = "base_url")]
-    report_url: Option<String>,
+    base_url: Option<String>,
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[cfg_attr(
+    not(target = "thumbv6m-none-eabi"),
+    derive(Default, Serialize, Deserialize)
+)]
 pub(crate) struct Config {
-    #[serde(rename = "monitor")]
-    pub monitor_spec: Option<MonitorSpec>,
-    #[serde(rename = "report")]
-    pub report_spec: Option<ReportSpec>,
+    pub monitor: Option<MonitorSpec>,
+    pub report: Option<ReportSpec>,
     #[serde(skip)]
     pub period_duration: Duration,
     #[serde(skip)]
@@ -61,7 +69,7 @@ pub(crate) fn read_config(config_file_path: &PathBuf) -> Result<Config, io::Erro
     let mut config: Config = toml::from_str(&config_string)
         .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not parse toml config file"))?;
 
-    match &config.report_spec {
+    match &config.report {
         Some(spec) => {
             config.period_duration = match spec.period_seconds {
                 None => Duration::from_secs(60),
@@ -71,8 +79,8 @@ pub(crate) fn read_config(config_file_path: &PathBuf) -> Result<Config, io::Erro
         None => config.period_duration = Duration::from_secs(60),
     }
 
-    config.report_url = match &config.report_spec {
-        Some(spec) => match &spec.report_url {
+    config.report_url = match &config.report {
+        Some(spec) => match &spec.base_url {
             Some(url_string) => Url::parse(url_string).ok(),
             None => None,
         },
@@ -90,20 +98,20 @@ mod test {
     #[test]
     fn config_monitor_connection() {
         let config: Config = toml::from_str("monitor = \"Connection\"\n").unwrap();
-        assert_eq!(config.monitor_spec, Some(MonitorSpec::Connection));
+        assert_eq!(config.monitor, Some(MonitorSpec::Connection));
     }
 
     #[test]
     fn config_monitor_all() {
         let config: Config = toml::from_str("monitor=\"All\"\n").unwrap();
-        assert_eq!(config.monitor_spec, Some(MonitorSpec::All))
+        assert_eq!(config.monitor, Some(MonitorSpec::All))
     }
 
     #[test]
     fn config_monitor_ssids() {
         let config: Config = toml::from_str("[monitor]\nSSIDs=['ABC', 'DEF']\n").unwrap();
         let ssid_list = MonitorSpec::SSIDs(vec!["ABC".to_owned(), "DEF".to_owned()]);
-        assert_eq!(config.monitor_spec, Some(ssid_list))
+        assert_eq!(config.monitor, Some(ssid_list))
     }
 
     #[test]
@@ -115,13 +123,13 @@ mod test {
             .expect("Could not get parent dir");
         let config_string = std::fs::read_to_string(root_dir.join(CONFIG_FILE_NAME)).unwrap();
         let config: Config = toml::from_str(&config_string).unwrap();
-        assert_eq!(config.monitor_spec, Some(MonitorSpec::Connection));
-        assert_eq!(config.report_spec.unwrap().period_seconds, Some(60));
+        assert_eq!(config.monitor, Some(MonitorSpec::Connection));
+        assert_eq!(config.report.unwrap().period_seconds, Some(60));
     }
 
     #[test]
     fn config_with_report_spec() {
         let config: Config = toml::from_str("[report]\nperiod_seconds = 1\n").unwrap();
-        assert_eq!(config.report_spec.unwrap().period_seconds, Some(1));
+        assert_eq!(config.report.unwrap().period_seconds, Some(1));
     }
 }
