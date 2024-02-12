@@ -37,10 +37,7 @@ fn run(config_file_path: &PathBuf) -> Result<(), io::Error> {
     );
     println!(
         "Monitor: {:?}",
-        config
-            .monitor_spec
-            .as_ref()
-            .unwrap_or(&MonitorSpec::Connection)
+        config.monitor.as_ref().unwrap_or(&MonitorSpec::Connection)
     );
 
     let (tx, rx) = channel();
