@@ -10,4 +10,4 @@ runner = "elf2uf2-rs -d"
 target = "thumbv6m-none-eabi"
 
 [env]
-DEFMT_LOG = "debug"
+DEFMT_LOG = "info"
