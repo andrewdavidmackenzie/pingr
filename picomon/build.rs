@@ -9,64 +9,76 @@
 //! new memory settings.
 
 use std::env;
-use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-#[path = "src/config.rs"]
-mod config;
-use config::Config;
-use config::MonitorSpec;
-use config::ReportSpec;
+#[path = "src/pico_config.rs"]
+mod pico_config;
 
-const DEFAULT_CONFIG: Config = Config {
-    monitor: Some(MonitorSpec::SSID("MOVISTAR_8A9E", "E68N8MA422GRQJQTPqjN")),
-    report: Some(ReportSpec {
-        period_seconds: Some(60),
-        base_url: Some("https://collectr.mackenzie-serres.workers.dev"),
-    }),
-};
+use config;
 
-impl Display for MonitorSpec {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            MonitorSpec::All => write!(f, "MonitorSpec::All")?,
-            MonitorSpec::Connection => write!(f, "MonitorSpec::Connection")?,
-            MonitorSpec::SSID(ssid, password) => {
-                write!(f, "MonitorSpec::SSID(\"{}\", \"{}\")", ssid, password)?
-            }
+const CONFIG_FILE_NAME: &str = "monitor.toml";
+
+// Given a Config struct and a filename, generate that as a source file in OUT_DIR
+fn generate_config(config: config::Config, filename: &str) {
+    let out = env::var("OUT_DIR").unwrap();
+    let out_dir = Path::new(&out);
+    let out_file = out_dir.join(filename);
+    let mut file = File::create(&out_file).unwrap();
+    file.write_all(b"use crate::pico_config::Config;").unwrap();
+    file.write_all(b"use crate::pico_config::MonitorSpec;")
+        .unwrap();
+    file.write_all(b"use crate::pico_config::ReportSpec;")
+        .unwrap();
+    file.write_all(b"pub(crate) const CONFIG: Config = ")
+        .unwrap();
+
+    file.write(b"Config {").unwrap();
+    match &config.monitor {
+        Some(monitor) => {
+            file.write(b"    monitor: Some(").unwrap();
+            match monitor {
+                config::MonitorSpec::All => file.write(b"MonitorSpec::All").unwrap(),
+                config::MonitorSpec::Connection => file.write(b"MonitorSpec::Connection").unwrap(),
+                config::MonitorSpec::SSID(ssid, password) => file
+                    .write(format!("MonitorSpec::SSID(\"{}\", \"{}\")", ssid, password).as_bytes())
+                    .unwrap(),
+            };
+            file.write(b"    ),").unwrap()
         }
-        Ok(())
-    }
-}
+        None => file.write(b"    monitor: None,").unwrap(),
+    };
 
-impl Display for ReportSpec {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "ReportSpec {{")?;
-        writeln!(
-            f,
-            "        period_seconds: Some({}),",
-            self.period_seconds.unwrap()
-        )?;
-        writeln!(f, "        base_url: Some(\"{}\"),", self.base_url.unwrap())?;
-        write!(f, "    }}")
-    }
-}
+    match &config.report {
+        Some(report) => {
+            file.write(b"    report: Some(").unwrap();
 
-impl Display for Config {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Config {{")?;
-        match &self.monitor {
-            Some(m) => writeln!(f, "    monitor: Some({}),", m)?,
-            None => writeln!(f, "    monitor: None,")?,
-        };
-        match &self.report {
-            Some(r) => writeln!(f, "    report: Some({}),", r)?,
-            None => writeln!(f, "    report: None,")?,
+            file.write(b"ReportSpec {").unwrap();
+            file.write(
+                format!(
+                    "        period_seconds: Some({}),",
+                    report.period_seconds.unwrap()
+                )
+                .as_bytes(),
+            )
+            .unwrap();
+            file.write(
+                format!(
+                    "        base_url: Some(\"{}\"),",
+                    report.base_url.as_ref().unwrap()
+                )
+                .as_bytes(),
+            )
+            .unwrap();
+            file.write(b"    }").unwrap();
+            file.write(b"    ),").unwrap()
         }
-        write!(f, "}}")
-    }
+        None => file.write(b"    report: None,").unwrap(),
+    };
+    file.write(b"}").unwrap();
+
+    file.write_all(b";").unwrap();
 }
 
 fn main() {
@@ -90,15 +102,12 @@ fn main() {
     println!("cargo:rustc-link-arg-bins=-Tlink-rp.x");
     println!("cargo:rustc-link-arg-bins=-Tdefmt.x");
 
-    // read monitor.toml and ssid.toml and generate a Config struct for picomon */
-    let out = env::var("OUT_DIR").unwrap();
-    let out_dir = Path::new(&out);
-    let out_file = out_dir.join("default_config.rs");
-    println!("cargo:warning=Out File is {}", out_file.display());
-    let mut file = File::create(&out_file).unwrap();
-    file.write_all(b"use crate::config::Config;").unwrap();
-    file.write_all(b"use crate::config::MonitorSpec;").unwrap();
-    file.write_all(b"use crate::config::ReportSpec;").unwrap();
-    file.write_all(format!("pub(crate) const CONFIG: Config = {};", DEFAULT_CONFIG).as_bytes())
-        .expect("Could not write Config to source file in OUT_DIR");
+    // TODO read monitor.toml and ssid.toml and generate a Config struct for picomon
+    let config_file_path = config::find_config_file(CONFIG_FILE_NAME).unwrap();
+    let mut config = config::read_config(&config_file_path).unwrap();
+    config.monitor = Some(config::MonitorSpec::SSID(
+        "MOVISTAR_8A9E".to_string(),
+        "E68N8MA422GRQJQTPqjN".to_string(),
+    ));
+    generate_config(config, "config.rs");
 }

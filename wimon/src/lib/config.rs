@@ -14,8 +14,6 @@ pub enum MonitorSpec {
     /// Only report on the status of the connection (wifi or ethernet) used to send results
     #[default]
     Connection,
-    /// Monitor a specific list of supplied SSIDs by name
-    SSIDs(Vec<String>),
     /// Monitor this one SSID, with the supplied name and password
     SSID(String, String),
 }
@@ -102,13 +100,6 @@ mod test {
     fn config_monitor_all() {
         let config: Config = toml::from_str("monitor=\"All\"\n").unwrap();
         assert_eq!(config.monitor, Some(MonitorSpec::All))
-    }
-
-    #[test]
-    fn config_monitor_ssids() {
-        let config: Config = toml::from_str("[monitor]\nSSIDs=['ABC', 'DEF']\n").unwrap();
-        let ssid_list = MonitorSpec::SSIDs(vec!["ABC".to_owned(), "DEF".to_owned()]);
-        assert_eq!(config.monitor, Some(ssid_list))
     }
 
     #[test]

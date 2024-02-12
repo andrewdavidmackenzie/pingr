@@ -3,13 +3,13 @@ name = "wimon"
 version = "0.1.0"
 edition = "2021"
 
-[[bin]]
-name = "wimon"
-path = "src/main.rs"
-
 [lib]
 name = "config"
 path = "src/lib/config.rs"
+
+[[bin]]
+name = "wimon"
+path = "src/main.rs"
 
 [features]
 default = ["ssids"]
@@ -17,6 +17,8 @@ ssids = ["wifiscanner"]
 
 [dependencies]
 data_model = { path = "../data_model" }
+
+# for creating a unique machine ID
 machineid-rs = "1.2.4"
 
 # for reading config from a file
@@ -25,7 +27,15 @@ serde = "~1.0"
 serde_json = "1.0.107"
 toml = { version = "0.8.8" }
 url = "2.2"
+
+# for making network requests
 curl = {version = "~0.4" }
+
+# for catching signals
 ctrlc = {version = "3.4.1", features = ["termination"] }
+
+# for installing as a system service
 service-manager = "0.5.1"
+
+# for scanning wifi and getting SSIDs visible
 wifiscanner = {version = "0.5.1", optional = true}
