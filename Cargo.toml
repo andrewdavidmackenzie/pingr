@@ -12,9 +12,10 @@ repository = "https://github.com/andrewdavidmackenzie/pingr/"
 readme = "README.md"
 edition = "2021"
 
-#[profile.release]
+[profile.release]
 # Tell `rustc` to optimize for small code size.
-#opt-level = "s"
-#lto = true
+opt-level = "s"
+lto = true
 ##strip = true
-#codegen-units = 1
+debug = true
+codegen-units = 1
