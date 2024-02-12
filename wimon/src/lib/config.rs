@@ -4,13 +4,11 @@ use std::time::Duration;
 use std::{env, io};
 use url::Url;
 
-pub(crate) const CONFIG_FILE_NAME: &str = "monitor.toml";
-
 #[cfg_attr(
     not(target = "thumbv6m-none-eabi"),
     derive(Default, Serialize, Deserialize, Debug, PartialEq)
 )]
-pub(crate) enum MonitorSpec {
+pub enum MonitorSpec {
     /// Report status of all SSIDs that are detected at each monitoring moment
     All,
     /// Only report on the status of the connection (wifi or ethernet) used to send results
@@ -26,16 +24,16 @@ pub(crate) enum MonitorSpec {
     not(target = "thumbv6m-none-eabi"),
     derive(Serialize, Deserialize, Debug, PartialEq)
 )]
-pub(crate) struct ReportSpec {
-    period_seconds: Option<u64>,
-    base_url: Option<String>,
+pub struct ReportSpec {
+    pub period_seconds: Option<u64>,
+    pub base_url: Option<String>,
 }
 
 #[cfg_attr(
     not(target = "thumbv6m-none-eabi"),
     derive(Default, Serialize, Deserialize)
 )]
-pub(crate) struct Config {
+pub struct Config {
     pub monitor: Option<MonitorSpec>,
     pub report: Option<ReportSpec>,
     #[serde(skip)]
@@ -44,7 +42,7 @@ pub(crate) struct Config {
     pub report_url: Option<Url>,
 }
 
-pub(crate) fn find_config_file(file_name: &str) -> Result<PathBuf, io::Error> {
+pub fn find_config_file(file_name: &str) -> Result<PathBuf, io::Error> {
     let mut dir = env::current_dir().ok();
 
     // Loop until no parent director exists. (i.e. stop at "/")
@@ -64,7 +62,7 @@ pub(crate) fn find_config_file(file_name: &str) -> Result<PathBuf, io::Error> {
     ))
 }
 
-pub(crate) fn read_config(config_file_path: &PathBuf) -> Result<Config, io::Error> {
+pub fn read_config(config_file_path: &PathBuf) -> Result<Config, io::Error> {
     let config_string = std::fs::read_to_string(config_file_path)?;
     let mut config: Config = toml::from_str(&config_string)
         .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not parse toml config file"))?;
@@ -92,8 +90,7 @@ pub(crate) fn read_config(config_file_path: &PathBuf) -> Result<Config, io::Erro
 
 #[cfg(test)]
 mod test {
-    use super::{Config, MonitorSpec, CONFIG_FILE_NAME};
-    use std::path::PathBuf;
+    use super::{Config, MonitorSpec};
 
     #[test]
     fn config_monitor_connection() {
@@ -112,19 +109,6 @@ mod test {
         let config: Config = toml::from_str("[monitor]\nSSIDs=['ABC', 'DEF']\n").unwrap();
         let ssid_list = MonitorSpec::SSIDs(vec!["ABC".to_owned(), "DEF".to_owned()]);
         assert_eq!(config.monitor, Some(ssid_list))
-    }
-
-    #[test]
-    fn bundled_spec() {
-        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let root_dir = manifest_dir
-            .parent()
-            .ok_or("Could not get parent dir")
-            .expect("Could not get parent dir");
-        let config_string = std::fs::read_to_string(root_dir.join(CONFIG_FILE_NAME)).unwrap();
-        let config: Config = toml::from_str(&config_string).unwrap();
-        assert_eq!(config.monitor, Some(MonitorSpec::Connection));
-        assert_eq!(config.report.unwrap().period_seconds, Some(60));
     }
 
     #[test]

@@ -7,8 +7,9 @@ use std::path::PathBuf;
 use std::sync::mpsc::channel;
 use std::{env, io};
 
-mod config;
 mod monitor;
+
+const CONFIG_FILE_NAME: &str = "monitor.toml";
 
 const SERVICE_NAME: &str = "net.mackenzie-serres.pingr.wimon";
 
@@ -18,7 +19,7 @@ fn main() -> Result<(), io::Error> {
     let args: Vec<_> = env::args().collect();
     match args.get(1).map(|s| s.as_str()) {
         None => {
-            let config_file_path = config::find_config_file(config::CONFIG_FILE_NAME)?;
+            let config_file_path = config::find_config_file(CONFIG_FILE_NAME)?;
             run(&config_file_path)?;
         }
         Some("install") => install_service(&service_name, &args[0])?,
@@ -116,4 +117,24 @@ fn uninstall_service(service_name: &ServiceLabel) -> Result<(), io::Error> {
     println!("service '{}' stopped and uninstalled", service_name);
 
     Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use super::CONFIG_FILE_NAME;
+    use config::{Config, MonitorSpec};
+    use std::path::PathBuf;
+
+    #[test]
+    fn bundled_spec() {
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let root_dir = manifest_dir
+            .parent()
+            .ok_or("Could not get parent dir")
+            .expect("Could not get parent dir");
+        let config_string = std::fs::read_to_string(root_dir.join(CONFIG_FILE_NAME)).unwrap();
+        let config: Config = toml::from_str(&config_string).unwrap();
+        assert_eq!(config.monitor, Some(MonitorSpec::Connection));
+        assert_eq!(config.report.unwrap().period_seconds, Some(60));
+    }
 }

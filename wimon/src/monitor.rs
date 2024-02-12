@@ -1,4 +1,4 @@
-use crate::config::{Config, MonitorSpec};
+use config::{Config, MonitorSpec};
 use curl::easy::Easy;
 use data_model::{Connection, ConnectionReport, DeviceId, MonitorReport, ReportType, Stats};
 use machineid_rs::{Encryption, HWIDComponent, IdBuilder};
