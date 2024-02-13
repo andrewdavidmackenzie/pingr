@@ -3,9 +3,11 @@
 #![no_std]
 #![no_main]
 
+use cyw43::Control;
 use cyw43_pio::PioSpi;
 use embassy_executor::Spawner;
 use embassy_rp::bind_interrupts;
+use embassy_rp::flash::Async;
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::peripherals::USB;
 use embassy_rp::peripherals::{DMA_CH0, PIN_23, PIN_25, PIO0};
@@ -57,6 +59,22 @@ async fn list_ssid(control: &mut Control<'_>) {
 }
 */
 
+async fn monitor_loop(device_id: &[u8; 8], mut control: Control<'_>) {
+    let flash_delay = Duration::from_millis(500);
+    let report_delay = Duration::from_secs(CONFIG.report.unwrap().period_seconds.unwrap());
+    loop {
+        log::info!("Device ID = {:x?}", device_id);
+
+        info!("Doing report");
+        control.gpio_set(0, true).await;
+        Timer::after(flash_delay).await;
+        control.gpio_set(0, false).await;
+
+        info!("Waiting for {}", report_delay);
+        Timer::after(report_delay).await;
+    }
+}
+
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
@@ -91,24 +109,19 @@ async fn main(spawner: Spawner) {
     // Switch on led to show we are up and running
     control.gpio_set(0, true).await;
 
+    let mut device_id = [0; 8];
+    let mut flash =
+        embassy_rp::flash::Flash::<_, Async, { 2 * 1024 * 1024 }>::new(p.FLASH, p.DMA_CH1);
+    flash.blocking_unique_id(&mut device_id).unwrap();
+
     if let Some(MonitorSpec::SSID(ssid, password)) = CONFIG.monitor {
         match control.join_wpa2(ssid, password).await {
             Ok(_) => {
                 log::info!("Joined wifi");
-                let flash_delay = Duration::from_millis(500);
-                let report_delay =
-                    Duration::from_secs(CONFIG.report.unwrap().period_seconds.unwrap());
-                loop {
-                    info!("Doing report");
-                    control.gpio_set(0, true).await;
-                    Timer::after(flash_delay).await;
-                    control.gpio_set(0, false).await;
 
-                    info!("Waiting");
-                    Timer::after(report_delay).await;
-                }
+                monitor_loop(&device_id, control).await;
             }
-            Err(_) => info!("Error joining wifi"),
+            Err(e) => info!("Error joining wifi: {:?}", e),
         }
     }
 }
