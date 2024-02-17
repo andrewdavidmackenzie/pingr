@@ -37,7 +37,7 @@ fn generate_config(config: config::Config, filename: &str) {
     file.write(b"Config {").unwrap();
     match &config.monitor {
         Some(monitor) => {
-            file.write(b"    monitor: Some(").unwrap();
+            file.write(b"    monitor: ").unwrap();
             match monitor {
                 config::MonitorSpec::All => file.write(b"MonitorSpec::All").unwrap(),
                 config::MonitorSpec::Connection => file.write(b"MonitorSpec::Connection").unwrap(),
@@ -45,19 +45,22 @@ fn generate_config(config: config::Config, filename: &str) {
                     .write(format!("MonitorSpec::SSID(\"{}\", \"{}\")", ssid, password).as_bytes())
                     .unwrap(),
             };
-            file.write(b"    ),").unwrap()
+            file.write(b"    ,").unwrap()
         }
-        None => file.write(b"    monitor: None,").unwrap(),
+        None => {
+            // TODO fail or substitute a default value here
+            file.write(b"    monitor: None,").unwrap()
+        }
     };
 
     match &config.report {
         Some(report) => {
-            file.write(b"    report: Some(").unwrap();
+            file.write(b"    report: ").unwrap();
 
             file.write(b"ReportSpec {").unwrap();
             file.write(
                 format!(
-                    "        period_seconds: Some({}),",
+                    "        period_seconds: {},",
                     report.period_seconds.unwrap()
                 )
                 .as_bytes(),
@@ -65,16 +68,19 @@ fn generate_config(config: config::Config, filename: &str) {
             .unwrap();
             file.write(
                 format!(
-                    "        base_url: Some(\"{}\"),",
+                    "        base_url: \"{}\",",
                     report.base_url.as_ref().unwrap()
                 )
                 .as_bytes(),
             )
             .unwrap();
             file.write(b"    }").unwrap();
-            file.write(b"    ),").unwrap()
+            file.write(b"    ,").unwrap()
         }
-        None => file.write(b"    report: None,").unwrap(),
+        None => {
+            // TODO fail or substitute a default value here
+            file.write(b"    report: None,").unwrap()
+        }
     };
     file.write(b"}").unwrap();
 
@@ -102,9 +108,13 @@ fn main() {
     println!("cargo:rustc-link-arg-bins=-Tlink-rp.x");
     println!("cargo:rustc-link-arg-bins=-Tdefmt.x");
 
-    // TODO read monitor.toml and ssid.toml and generate a Config struct for picomon
+    // Generate a pico_config::Config struct for picomon from the monitor.toml file
     let config_file_path = config::find_config_file(CONFIG_FILE_NAME).unwrap();
     let mut config = config::read_config(&config_file_path).unwrap();
+
+    // TODO rebuild if ../monitor.toml changes
+
+    // TODO read this from ssid.toml that is not in git
     config.monitor = Some(config::MonitorSpec::SSID(
         "MOVISTAR_8A9E".to_string(),
         "E68N8MA422GRQJQTPqjN".to_string(),

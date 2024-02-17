@@ -10,12 +10,12 @@ pub(crate) enum MonitorSpec {
 
 #[allow(dead_code)]
 pub(crate) struct ReportSpec {
-    pub period_seconds: Option<u64>,
-    pub base_url: Option<&'static str>,
+    pub period_seconds: u64,
+    pub base_url: &'static str,
 }
 
 #[allow(dead_code)]
 pub(crate) struct Config {
-    pub monitor: Option<MonitorSpec>,
-    pub report: Option<ReportSpec>,
+    pub monitor: MonitorSpec,
+    pub report: ReportSpec,
 }

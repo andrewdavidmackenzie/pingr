@@ -27,3 +27,15 @@ However, this works
 `ditto --norsrc --noextattr --noacl picow_blink.uf2 /Volumes/RPI-RP2`
 
 people report that rsync may also work.
+
+Copy executable to pico using SWD and debug probe
+```commandline
+sudo openocd -f interface/cmsis-dap.cfg -f target/rp2040.cfg -c "adapter speed 5000" -c "program ../target/thumbv6m-none-eabi/release/picomon verify reset exit"
+```
+
+Or with .cargo/config.toml having this line:
+```
+runner = "probe-rs run --chip RP2040 --protocol swd"
+```
+
+you can just use `cargo run`
