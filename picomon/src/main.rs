@@ -181,6 +181,7 @@ async fn main(spawner: Spawner) {
         p.DMA_CH0,
     );
 
+    // TODO see if I can avoid need for heap and embedded-alloc
     // Initialize the allocator BEFORE you use it
     {
         use core::mem::MaybeUninit;
