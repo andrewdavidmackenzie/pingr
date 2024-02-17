@@ -8,36 +8,43 @@ const DEVICE_STATUS_KV_NAMESPACE: &str = "DEVICE_STATUS";
 const CONNECTION_DEVICE_STATUS_KV_NAMESPACE: &str = "CONNECTION_DEVICE_STATUS";
 const DEVICE_ID_CONNECTION_MAPPING_KV_NAMESPACE: &str = "DEVICE_ID_CONNECTION_MAPPING";
 
+/*
+let headers = req.headers();
+if let Ok(Some(ip)) = headers.get("CF-Connecting-IP") {
+    console_log!("Source IP = {:?}", ip);
+}
+ */
+
+async fn do_request(req: Request, ctx: RouteContext<()>) -> Result<Response> {
+    let mut device_id = None;
+    let url = req.url().unwrap();
+    for query_pair in url.query_pairs() {
+        if let Cow::Borrowed("device_id") = query_pair.0 {
+            device_id = Some(query_pair.1)
+        }
+    }
+
+    match device_id {
+        Some(name) => {
+            let namespace = ctx.durable_object("DEVICES")?;
+            let id = namespace.id_from_name(&name)?;
+            let stub = id.get_stub()?;
+            stub.fetch_with_request(req).await
+        }
+        _ => Response::error("Bad Request - missing device_id", 400),
+    }
+}
+
 #[event(fetch)]
 async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     let router = Router::new();
 
     router
+        .get_async("/report/:type", |req, ctx| async move {
+            do_request(req, ctx).await
+        })
         .post_async("/report/:type", |req, ctx| async move {
-            /*
-            let headers = req.headers();
-            if let Ok(Some(ip)) = headers.get("CF-Connecting-IP") {
-                console_log!("Source IP = {:?}", ip);
-            }
-             */
-
-            let mut device_id = None;
-            let url = req.url().unwrap();
-            for query_pair in url.query_pairs() {
-                if let Cow::Borrowed("device_id") = query_pair.0 {
-                    device_id = Some(query_pair.1)
-                }
-            }
-
-            match device_id {
-                Some(name) => {
-                    let namespace = ctx.durable_object("DEVICES")?;
-                    let id = namespace.id_from_name(&name)?;
-                    let stub = id.get_stub()?;
-                    stub.fetch_with_request(req).await
-                }
-                _ => Response::error("Bad Request - missing device_id", 400),
-            }
+            do_request(req, ctx).await
         })
         .run(req, env)
         .await
