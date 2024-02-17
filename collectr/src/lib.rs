@@ -15,7 +15,7 @@ if let Ok(Some(ip)) = headers.get("CF-Connecting-IP") {
 }
  */
 
-async fn do_request(req: Request, ctx: RouteContext<()>) -> Result<Response> {
+async fn device_report(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let mut device_id = None;
     let url = req.url().unwrap();
     for query_pair in url.query_pairs() {
@@ -41,10 +41,10 @@ async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
 
     router
         .get_async("/report/:type", |req, ctx| async move {
-            do_request(req, ctx).await
+            device_report(req, ctx).await
         })
         .post_async("/report/:type", |req, ctx| async move {
-            do_request(req, ctx).await
+            device_report(req, ctx).await
         })
         .run(req, env)
         .await
