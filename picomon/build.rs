@@ -16,8 +16,6 @@ use std::path::{Path, PathBuf};
 #[path = "src/pico_config.rs"]
 mod pico_config;
 
-use config;
-
 const CONFIG_FILE_NAME: &str = "monitor.toml";
 
 // Given a Config struct and a filename, generate that as a source file in OUT_DIR
@@ -25,7 +23,7 @@ fn generate_config(config: config::Config, filename: &str) {
     let out = env::var("OUT_DIR").unwrap();
     let out_dir = Path::new(&out);
     let out_file = out_dir.join(filename);
-    let mut file = File::create(&out_file).unwrap();
+    let mut file = File::create(out_file).unwrap();
     file.write_all(b"use crate::pico_config::Config;").unwrap();
     file.write_all(b"use crate::pico_config::MonitorSpec;")
         .unwrap();
@@ -34,31 +32,30 @@ fn generate_config(config: config::Config, filename: &str) {
     file.write_all(b"pub(crate) const CONFIG: Config = ")
         .unwrap();
 
-    file.write(b"Config {").unwrap();
+    file.write_all(b"Config {").unwrap();
     match &config.monitor {
         Some(monitor) => {
-            file.write(b"    monitor: ").unwrap();
+            file.write_all(b"    monitor: ").unwrap();
             match monitor {
                 config::MonitorSpec::All => file.write(b"MonitorSpec::All").unwrap(),
                 config::MonitorSpec::Connection => file.write(b"MonitorSpec::Connection").unwrap(),
                 config::MonitorSpec::SSID(ssid, password) => file
-                    .write(format!("MonitorSpec::SSID(\"{}\", \"{}\")", ssid, password).as_bytes())
+                    .write(format!("MonitorSpec::Ssid(\"{}\", \"{}\")", ssid, password).as_bytes())
                     .unwrap(),
             };
-            file.write(b"    ,").unwrap()
+            file.write_all(b"    ,").unwrap()
         }
         None => {
             // TODO fail or substitute a default value here
-            file.write(b"    monitor: None,").unwrap()
+            file.write_all(b"    monitor: None,").unwrap()
         }
     };
 
     match &config.report {
         Some(report) => {
-            file.write(b"    report: ").unwrap();
-
-            file.write(b"ReportSpec {").unwrap();
-            file.write(
+            file.write_all(b"    report: ").unwrap();
+            file.write_all(b"ReportSpec {").unwrap();
+            file.write_all(
                 format!(
                     "        period_seconds: {},",
                     report.period_seconds.unwrap()
@@ -66,7 +63,7 @@ fn generate_config(config: config::Config, filename: &str) {
                 .as_bytes(),
             )
             .unwrap();
-            file.write(
+            file.write_all(
                 format!(
                     "        base_url: \"{}\",",
                     report.base_url.as_ref().unwrap()
@@ -74,15 +71,15 @@ fn generate_config(config: config::Config, filename: &str) {
                 .as_bytes(),
             )
             .unwrap();
-            file.write(b"    }").unwrap();
-            file.write(b"    ,").unwrap()
+            file.write_all(b"    }").unwrap();
+            file.write_all(b"    ,").unwrap()
         }
         None => {
             // TODO fail or substitute a default value here
-            file.write(b"    report: None,").unwrap()
+            file.write_all(b"    report: None,").unwrap()
         }
     };
-    file.write(b"}").unwrap();
+    file.write_all(b"}").unwrap();
 
     file.write_all(b";").unwrap();
 }

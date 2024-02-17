@@ -107,7 +107,7 @@ async fn monitor_loop<'a>(
         &mut report_url,
         "{}/report/ongoing?device_id={}&connection=ssid%3D{}&period={}",
         base_url,
-        core::str::from_utf8(&device_id_hex).unwrap(),
+        core::str::from_utf8(device_id_hex).unwrap(),
         ssid,
         period_seconds
     )
@@ -118,11 +118,11 @@ async fn monitor_loop<'a>(
     // Allocate with StaticCell. That one gives you a &'static mut T, without requiring
     // T to be Send/Sync.
     let client_state: TcpClientState<2, 1024, 1024> = TcpClientState::new();
-    let client = TcpClient::new(&stack, &client_state);
-    let dns = DnsSocket::new(&stack);
+    let client = TcpClient::new(stack, &client_state);
+    let dns = DnsSocket::new(stack);
     //    let mut tls_rx = [0; 16384];
     //    let mut tls_tx = [0; 1024];
-    let seed: u64 = 0x0123_4567_89ab_cdef;
+    // let seed: u64 = 0x0123_4567_89ab_cdef;
     //    let mut client = HttpClient::new_with_tls(
     let mut client = HttpClient::new(
         &client,
@@ -228,7 +228,7 @@ async fn main(spawner: Spawner) {
 
     spawner.spawn(net_task(stack)).unwrap();
 
-    if let MonitorSpec::SSID(ssid, password) = CONFIG.monitor {
+    if let MonitorSpec::Ssid(ssid, password) = CONFIG.monitor {
         match control.join_wpa2(ssid, password).await {
             Ok(_) => {
                 info!("Joined wifi network: '{}'", ssid);

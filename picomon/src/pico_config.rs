@@ -5,7 +5,7 @@ pub(crate) enum MonitorSpec {
     /// Only report on the status of the connection (wifi or ethernet) used to send results
     Connection,
     /// Monitor this one SSID, with the supplied name and password
-    SSID(&'static str, &'static str),
+    Ssid(&'static str, &'static str),
 }
 
 #[allow(dead_code)]
