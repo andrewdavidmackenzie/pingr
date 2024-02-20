@@ -39,3 +39,24 @@ runner = "probe-rs run --chip RP2040 --protocol swd"
 ```
 
 you can just use `cargo run`
+
+Starting gcb server:
+`sudo openocd -f interface/cmsis-dap.cfg -f target/rp2040.cfg -c "adapter speed 5000"`
+
+starting gdb client:
+```commandline
+gdb ../target/thumbv6m-none-eabi/debug/picomon
+target remote localhost:3333
+monitor reset init
+continue
+```
+program should start running from boot.
+
+
+starting lldb client
+`lldb ../target/thumbv6m-none-eabi/debug/picomon`
+
+then to connect to the gdb server:
+```commandline
+gdb-remote localhost:3333
+```
