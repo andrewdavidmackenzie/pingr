@@ -133,12 +133,12 @@ async fn monitor_loop<'a>(
     info!("Starting monitoring loop - will report every {period_seconds}s");
 
     let mut rx_buf = [0; 4096];
-    let mut request = client.request(Method::GET, &report_url).await.unwrap();
 
     loop {
         info!("Sending report #{}", report_count);
         control.gpio_set(0, true).await;
 
+        let mut request = client.request(Method::GET, &report_url).await.unwrap();
         let response = request.send(&mut rx_buf).await;
 
         match response {
@@ -150,7 +150,7 @@ async fn monitor_loop<'a>(
                 }
             }
             Err(e) => {
-                log::warn!("Error doing HTTP request: {:?}", e);
+                error!("Error doing HTTP request: {:?}", e);
             }
         }
 
