@@ -13,9 +13,6 @@ readme = "README.md"
 edition = "2021"
 
 [profile.release]
-# Tell `rustc` to optimize for small code size.
 opt-level = "s"
 lto = true
-##strip = true
-debug = true
 codegen-units = 1
