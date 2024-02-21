@@ -1,32 +1,30 @@
 [package]
 name = "picomon"
-edition = "2021"
 version = "0.1.0"
+readme = "README.md"
+edition = "2021"
 
 [dependencies]
-embassy-time = { version = "0.3.0", features = ["defmt", "defmt-timestamp-uptime"] }
-embassy-executor = { version = "0.5.0", features = ["task-arena-size-65536", "arch-cortex-m", "executor-thread", "executor-interrupt", "defmt", "integrated-timers"] }
-embassy-rp = { version = "0.1.0", features = ["defmt", "unstable-pac", "time-driver", "critical-section-impl"] }
-embassy-net = { version = "0.4.0", features = ["defmt", "tcp", "udp", "dns", "dhcpv4", "medium-ethernet"] }
-embassy-usb-logger = { version = "0.1.0"}
-cyw43 = { version = "0.1.0", features = ["defmt", "firmware-logs"] }
-cyw43-pio = { version = "0.1.0", features = ["defmt", "overclock"] }
-panic-probe = { version = "0.3", features = ["print-defmt"] }
-portable-atomic = { version = "1.5", features = ["critical-section"] }
-defmt = "0.3"
-defmt-rtt = "0.4"
-cortex-m-rt = "0.7.0"
-static_cell = "2"
+embassy-time = { version = "0.3.0", default-features = false, features = ["defmt", "defmt-timestamp-uptime"] }
+embassy-executor = { version = "0.5.0", default-features = false, features = ["task-arena-size-65536", "arch-cortex-m", "executor-thread", "executor-interrupt", "defmt", "integrated-timers"] }
+embassy-rp = { version = "0.1.0", default-features = false, features = ["defmt", "unstable-pac", "time-driver", "critical-section-impl"] }
+embassy-net = { version = "0.4.0", default-features = false, features = ["defmt", "tcp", "udp", "dns", "dhcpv4"] }
+embassy-usb-logger = { version = "0.1.0", default-features = false }
+cyw43 = { version = "0.1.0", default-features = false, features = ["defmt"] }
+cyw43-pio = { version = "0.1.0", default-features = false, features = ["defmt"] }
+panic-probe = { version = "0.3", default-features = false, features = ["print-defmt"] }
+portable-atomic = { version = "1.5", default-features = false, features = ["critical-section"] }
+defmt = { version = "0.3", default-features = false}
+defmt-rtt = { version = "0.4", default-features = false }
+cortex-m-rt = { version = "0.7.0", default-features = false }
+static_cell = { version = "2", default-features = false}
 log = "0.4"
 
 # To convert device_id into hex for use as a string
 faster-hex = {  version = "0.9.0", default-features = false }
 
 # To make httpclient requests to the server, with TLS
-#reqwless = { version="0.11.0", default-features = false, features = ["embedded-tls"]}
-reqwless = { version="0.11.0", default-features = false}
-# see if can be removed - maybe needed by TLS
-embedded-alloc = "0.5.1"
+reqwless = { version="0.11.0", default-features = false, features = ["embedded-tls"]}
 # Needed to workaround an embassy dns server count bug
 smoltcp = { version = "0.11.0", default-features = false, features = ["dns-max-server-count-4"]}
 

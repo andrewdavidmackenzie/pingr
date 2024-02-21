@@ -3,8 +3,6 @@
 #![no_std]
 #![no_main]
 
-extern crate alloc;
-
 use core::fmt::Write;
 use cyw43::Control;
 use cyw43::NetDriver;
@@ -26,8 +24,7 @@ use embassy_time::{Duration, Timer};
 use faster_hex::hex_encode;
 use log::{error, info};
 use reqwless::{client::HttpClient, request::Method};
-//use reqwless::{client::TlsConfig, client::TlsVerify};
-use embedded_alloc::Heap;
+use reqwless::{client::TlsConfig, client::TlsVerify};
 
 use defmt_rtt as _;
 use panic_probe as _;
@@ -44,9 +41,6 @@ mod config {
     include!(concat!(env!("OUT_DIR"), "/config.rs"));
 }
 use config::CONFIG;
-
-#[global_allocator]
-static HEAP: Heap = Heap::empty();
 
 const FLASH_SIZE: usize = 2 * 1024 * 1024;
 
@@ -128,20 +122,18 @@ async fn monitor_loop<'a>(
     let client_state: TcpClientState<2, 1024, 1024> = TcpClientState::new();
     let client = TcpClient::new(stack, &client_state);
     let dns = DnsSocket::new(stack);
-    //    let mut tls_rx = [0; 16384];
-    //    let mut tls_tx = [0; 1024];
-    // let seed: u64 = 0x0123_4567_89ab_cdef;
-    //    let mut client = HttpClient::new_with_tls(
-    let mut client = HttpClient::new(
+    let mut tls_rx = [0; 16384];
+    let mut tls_tx = [0; 1024];
+    let seed: u64 = 0x0123_4567_89ab_cdef;
+    let mut client = HttpClient::new_with_tls(
         &client,
         &dns,
-        //        TlsConfig::new(seed, &mut tls_rx, &mut tls_tx, TlsVerify::None),
+        TlsConfig::new(seed, &mut tls_rx, &mut tls_tx, TlsVerify::None),
     );
-
-    info!("Starting monitoring loop - will report every {period_seconds}s");
 
     let mut rx_buf = [0; 4096];
 
+    info!("Starting monitoring loop - will report every {period_seconds}s");
     loop {
         info!("Sending report #{}", report_count);
         control.gpio_set(0, true).await;
@@ -192,15 +184,6 @@ async fn main(spawner: Spawner) {
         p.PIN_29,
         p.DMA_CH0,
     );
-
-    // TODO see if I can avoid need for heap and embedded-alloc
-    // Initialize the allocator BEFORE you use it
-    {
-        use core::mem::MaybeUninit;
-        const HEAP_SIZE: usize = 4096;
-        static mut HEAP_MEM: [MaybeUninit<u8>; HEAP_SIZE] = [MaybeUninit::uninit(); HEAP_SIZE];
-        unsafe { HEAP.init(HEAP_MEM.as_ptr() as usize, HEAP_SIZE) }
-    }
 
     static STATE: StaticCell<cyw43::State> = StaticCell::new();
     let state = STATE.init(cyw43::State::new());
