@@ -23,12 +23,15 @@ use embassy_rp::peripherals::{DMA_CH0, PIN_23, PIN_25, PIO0};
 use embassy_rp::pio::{InterruptHandler, Pio};
 use embassy_rp::usb::{Driver, InterruptHandler as USBInterruptHandler};
 use embassy_time::{Duration, Timer};
-use embedded_alloc::Heap;
 use faster_hex::hex_encode;
 use log::{error, info};
-use reqwless::{client::HttpClient, client::TlsConfig, client::TlsVerify, request::Method};
+use reqwless::{client::HttpClient, request::Method};
+//use reqwless::{client::TlsConfig, client::TlsVerify};
+use embedded_alloc::Heap;
+
+use defmt_rtt as _;
+use panic_probe as _;
 use static_cell::StaticCell;
-use {defmt_rtt as _, panic_probe as _};
 
 mod pico_config;
 use pico_config::{Config, MonitorSpec};
