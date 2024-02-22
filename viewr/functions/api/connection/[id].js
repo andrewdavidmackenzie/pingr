@@ -1,3 +1,5 @@
+// Return a JSON for the Value of the entry in the ConnectionDeviceStatus KV Namespace
+// for the entry with key == 'id'
 export async function onRequestGet(context) {
   const connection_device_id = context.params.id;
 
@@ -11,6 +13,5 @@ export async function onRequestGet(context) {
     return new Response('Not found', { status: 404 })
   }
 
-  // TODO maybe simplify all these methods to returns Strings instead of json and simplify parsing?
   return Response.json(status);
 }
