@@ -108,7 +108,8 @@ fn main() {
     let config_file_path = config::find_config_file(CONFIG_FILE_NAME).unwrap();
     let mut config = config::read_config(&config_file_path).unwrap();
 
-    // TODO rebuild if ../monitor.toml changes
+    // rebuild if ../monitor.toml changes
+    println!("cargo:rerun-if-changed=../monitor.toml");
 
     // TODO read this from ssid.toml that is not in git
     config.monitor = Some(config::MonitorSpec::SSID(
