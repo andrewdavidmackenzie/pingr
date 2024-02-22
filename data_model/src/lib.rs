@@ -67,3 +67,8 @@ impl Display for MonitorReport {
         write!(f, "\tConnection Used = {}", self.connection_used)
     }
 }
+
+#[derive(Serialize, Deserialize, Default, Debug)]
+pub struct DeviceDetails {
+    pub friendly_name: Option<String>,
+}

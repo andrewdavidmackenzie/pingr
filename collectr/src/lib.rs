@@ -2,9 +2,12 @@ use crate::device::StateChange;
 use std::borrow::Cow;
 use worker::*;
 
+use data_model::DeviceDetails;
+
 mod device;
 
 const DEVICE_STATUS_KV_NAMESPACE: &str = "DEVICE_STATUS";
+const DEVICE_DETAILS_KV_NAMESPACE: &str = "DEVICE_DETAILS";
 const CONNECTION_DEVICE_STATUS_KV_NAMESPACE: &str = "CONNECTION_DEVICE_STATUS";
 const DEVICE_ID_CONNECTION_MAPPING_KV_NAMESPACE: &str = "DEVICE_ID_CONNECTION_MAPPING";
 
@@ -116,8 +119,8 @@ pub async fn main(message_batch: MessageBatch<StateChange>, env: Env, _ctx: Cont
             .execute()
             .await?;
 
+        // Store the mapping of DeviceId to Connection
         let kv = env.kv(DEVICE_ID_CONNECTION_MAPPING_KV_NAMESPACE)?;
-
         let con = match state_change.connection {
             None => {
                 // If no connection is supplied - try and find one in the DeviceID to Connections table
@@ -140,6 +143,14 @@ pub async fn main(message_batch: MessageBatch<StateChange>, env: Env, _ctx: Cont
         )?
         .execute()
         .await?;
+
+        // If the device does not have an entry in the DEVICE_DETAILS table, create a default one
+        let kv = env.kv(DEVICE_DETAILS_KV_NAMESPACE)?;
+        if kv.get(&state_change.id).text().await?.is_none() {
+            kv.put(&state_change.id, DeviceDetails::default())?
+                .execute()
+                .await?;
+        }
     }
 
     // Retry all messages
