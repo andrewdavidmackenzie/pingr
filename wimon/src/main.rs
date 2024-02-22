@@ -5,6 +5,7 @@ use service_manager::{
 };
 use std::path::PathBuf;
 use std::sync::mpsc::channel;
+use std::time::Duration;
 use std::{env, io};
 
 mod monitor;
@@ -109,12 +110,18 @@ fn uninstall_service(service_name: &ServiceLabel) -> Result<(), io::Error> {
         label: service_name.clone(),
     })?;
 
+    println!(
+        "service '{}' stopped. Waiting for 10s before uninstalling",
+        service_name
+    );
+    std::thread::sleep(Duration::from_secs(10));
+
     // Uninstall our service using the underlying service management platform
     manager.uninstall(ServiceUninstallCtx {
         label: service_name.clone(),
     })?;
 
-    println!("service '{}' stopped and uninstalled", service_name);
+    println!("service '{}' uninstalled", service_name);
 
     Ok(())
 }
