@@ -1,5 +1,8 @@
 all:
 
+build:
+	trunk build --release
+
 deploy:
 	trunk build --release
 	npx wrangler pages deploy dist
