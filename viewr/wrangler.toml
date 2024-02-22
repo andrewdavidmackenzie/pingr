@@ -5,5 +5,6 @@ kv_namespaces = [
     { binding = "DEVICE_STATUS", id = "aa1793c1a3d7497bb12ce3c5d2c3f3c7" },
     { binding = "DEVICE_ID_CONNECTION_MAPPING", id = "75fde85c25c5412f8741d5ff7e61d9fd" },
     { binding = "CONNECTION_DEVICE_STATUS", id = "d6786cf203bf46d39ee3ec6718c27dde" },
-    { binding = "CONNECTION_LIST", id = "f5912a90df384de1a811360b90d35368" }
+    { binding = "CONNECTION_LIST", id = "f5912a90df384de1a811360b90d35368" },
+    { binding = "DEVICE_DETAILS", id = "fb0274e0f3e7461ea6bf2322656e2fd9" }
 ]
