@@ -8,6 +8,7 @@
 //! updating `memory.x` ensures a rebuild of the application with the
 //! new memory settings.
 
+use config::SsidSpec;
 use std::env;
 use std::fs::File;
 use std::io::Write;
@@ -17,9 +18,10 @@ use std::path::{Path, PathBuf};
 mod pico_config;
 
 const CONFIG_FILE_NAME: &str = "monitor.toml";
+const SSID_FILE_NAME: &str = "ssid.toml";
 
 // Given a Config struct and a filename, generate that as a source file in OUT_DIR
-fn generate_config(config: config::Config, filename: &str, ssid_name: &str, ssid_pass: &str) {
+fn generate_config(config: config::Config, filename: &str, ssid: SsidSpec) {
     let out = env::var("OUT_DIR").unwrap();
     let out_dir = Path::new(&out);
     let out_file = out_dir.join(filename);
@@ -41,7 +43,7 @@ fn generate_config(config: config::Config, filename: &str, ssid_name: &str, ssid
     file.write_all(
         format!(
             "pub(crate) const SSID_NAME : &[u8; 56] = b\"$SSID_NAME::{: <32}$SSID_NAME::\";\n",
-            ssid_name
+            ssid.ssid_name
         )
         .as_bytes(),
     )
@@ -50,7 +52,7 @@ fn generate_config(config: config::Config, filename: &str, ssid_name: &str, ssid
     file.write_all(
         format!(
             "pub(crate) const SSID_PASS : &[u8; 87] = b\"$SSID_PASS::{: <63}$SSID_PASS::\";\n",
-            ssid_pass
+            ssid.ssid_pass
         )
         .as_bytes(),
     )
@@ -129,11 +131,17 @@ fn main() {
     println!("cargo:rustc-link-arg-bins=-Tdefmt.x");
 
     // Generate a pico_config::Config struct for picomon from the monitor.toml file
-    let config_file_path = config::find_config_file(CONFIG_FILE_NAME).unwrap();
+    let config_file_path =
+        config::find_config_file(CONFIG_FILE_NAME).expect("Could not find monitor.toml file");
     let config = config::read_config(&config_file_path).unwrap();
-
     // rebuild if ../monitor.toml changes
     println!("cargo:rerun-if-changed=../monitor.toml");
 
-    generate_config(config, "config.rs", "MOVISTAR_8A9E", "E68N8MA422GRQJQTPqjN");
+    let ssid_path = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
+        .parent()
+        .unwrap()
+        .join(SSID_FILE_NAME);
+    let ssid_spec = config::read_ssid(&ssid_path).expect("Could not find ssid.toml file");
+
+    generate_config(config, "config.rs", ssid_spec);
 }

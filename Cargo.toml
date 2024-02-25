@@ -1,5 +1,5 @@
 [workspace]
-members = ["wimon", "collectr", "viewr", "picomon"]
+members = ["wimon", "collectr", "viewr", "picomon", "configr"]
 default-members = ["wimon"]
 resolver = "2"
 
@@ -16,3 +16,4 @@ edition = "2021"
 opt-level = "s"
 lto = true
 codegen-units = 1
+strip = true

@@ -84,6 +84,18 @@ pub fn read_config(config_file_path: &PathBuf) -> Result<Config, io::Error> {
     Ok(config)
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SsidSpec {
+    pub ssid_name: String,
+    pub ssid_pass: String,
+}
+
+pub fn read_ssid(ssid_file_path: &PathBuf) -> Result<SsidSpec, io::Error> {
+    let ssid_string = std::fs::read_to_string(ssid_file_path)?;
+    toml::from_str(&ssid_string)
+        .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not parse toml ssid file"))
+}
+
 #[cfg(test)]
 mod test {
     use super::{Config, MonitorSpec};

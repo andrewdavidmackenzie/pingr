@@ -57,14 +57,6 @@ fn measure(config: &Config) -> Result<MonitorReport, io::Error> {
                 }
             }
         }
-        MonitorSpec::SSID(ssid_name, _pass) => {
-            let wifis = wifiscanner::scan().unwrap_or_default();
-            for wifi in wifis {
-                if &wifi.ssid == ssid_name {
-                    add_report(&mut report, &wifi);
-                }
-            }
-        }
     };
 
     Ok(report)
