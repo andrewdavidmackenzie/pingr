@@ -14,8 +14,6 @@ pub enum MonitorSpec {
     /// Only report on the status of the connection (wifi or ethernet) used to send results
     #[default]
     Connection,
-    /// Monitor this one SSID, with the supplied name and password
-    SSID(String, String),
 }
 
 #[cfg_attr(

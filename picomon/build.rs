@@ -19,16 +19,43 @@ mod pico_config;
 const CONFIG_FILE_NAME: &str = "monitor.toml";
 
 // Given a Config struct and a filename, generate that as a source file in OUT_DIR
-fn generate_config(config: config::Config, filename: &str) {
+fn generate_config(config: config::Config, filename: &str, ssid_name: &str, ssid_pass: &str) {
     let out = env::var("OUT_DIR").unwrap();
     let out_dir = Path::new(&out);
     let out_file = out_dir.join(filename);
     let mut file = File::create(out_file).unwrap();
-    file.write_all(b"use crate::pico_config::Config;").unwrap();
-    file.write_all(b"use crate::pico_config::MonitorSpec;")
+    file.write_all(b"use crate::pico_config::Config;\n")
         .unwrap();
-    file.write_all(b"use crate::pico_config::ReportSpec;")
+    file.write_all(b"use crate::pico_config::MonitorSpec;\n")
         .unwrap();
+    file.write_all(b"use crate::pico_config::ReportSpec;\n")
+        .unwrap();
+    file.write_all(b"pub(crate) const MARKER_LENGTH : usize = \"$SSID_NAME::\".len();")
+        .unwrap();
+    file.write_all(b"pub(crate) const SSID_NAME_LENGTH : usize = 32;")
+        .unwrap();
+    file.write_all(b"pub(crate) const SSID_PASS_LENGTH : usize = 63;")
+        .unwrap();
+    // SSID Names can be upto 32 ASCII characters plus 24 for markers = 56
+    // right pad the provided string with spaces upto 32 ASCII characters (bytes)
+    file.write_all(
+        format!(
+            "pub(crate) const SSID_NAME : &[u8; 56] = b\"$SSID_NAME::{: <32}$SSID_NAME::\";\n",
+            ssid_name
+        )
+        .as_bytes(),
+    )
+    .unwrap();
+    // SSID Passwords can be upto 63 ASCII characters plus 24 for markers = 87
+    file.write_all(
+        format!(
+            "pub(crate) const SSID_PASS : &[u8; 87] = b\"$SSID_PASS::{: <63}$SSID_PASS::\";\n",
+            ssid_pass
+        )
+        .as_bytes(),
+    )
+    .unwrap();
+
     file.write_all(b"pub(crate) const CONFIG: Config = ")
         .unwrap();
 
@@ -39,9 +66,6 @@ fn generate_config(config: config::Config, filename: &str) {
             match monitor {
                 config::MonitorSpec::All => file.write(b"MonitorSpec::All").unwrap(),
                 config::MonitorSpec::Connection => file.write(b"MonitorSpec::Connection").unwrap(),
-                config::MonitorSpec::SSID(ssid, password) => file
-                    .write(format!("MonitorSpec::Ssid(\"{}\", \"{}\")", ssid, password).as_bytes())
-                    .unwrap(),
             };
             file.write_all(b"    ,").unwrap()
         }
@@ -106,15 +130,10 @@ fn main() {
 
     // Generate a pico_config::Config struct for picomon from the monitor.toml file
     let config_file_path = config::find_config_file(CONFIG_FILE_NAME).unwrap();
-    let mut config = config::read_config(&config_file_path).unwrap();
+    let config = config::read_config(&config_file_path).unwrap();
 
     // rebuild if ../monitor.toml changes
     println!("cargo:rerun-if-changed=../monitor.toml");
 
-    // TODO read this from ssid.toml that is not in git
-    config.monitor = Some(config::MonitorSpec::SSID(
-        "MOVISTAR_8A9E".to_string(),
-        "E68N8MA422GRQJQTPqjN".to_string(),
-    ));
-    generate_config(config, "config.rs");
+    generate_config(config, "config.rs", "MOVISTAR_8A9E", "E68N8MA422GRQJQTPqjN");
 }

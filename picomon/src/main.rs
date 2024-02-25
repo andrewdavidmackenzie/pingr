@@ -31,7 +31,7 @@ use panic_probe as _;
 use static_cell::StaticCell;
 
 mod pico_config;
-use pico_config::{Config, MonitorSpec};
+use pico_config::Config;
 
 mod report_url;
 use report_url::ReportUrl;
@@ -40,6 +40,7 @@ use report_url::ReportUrl;
 mod config {
     include!(concat!(env!("OUT_DIR"), "/config.rs"));
 }
+use crate::config::{MARKER_LENGTH, SSID_NAME, SSID_NAME_LENGTH, SSID_PASS, SSID_PASS_LENGTH};
 use config::CONFIG;
 
 const FLASH_SIZE: usize = 2 * 1024 * 1024;
@@ -223,24 +224,31 @@ async fn main(spawner: Spawner) {
 
     spawner.spawn(net_task(stack)).unwrap();
 
-    if let MonitorSpec::Ssid(ssid, password) = CONFIG.monitor {
-        let mut attempt = 1;
-        while attempt <= WIFI_JOIN_RETRY_ATTEMPT_LIMIT {
-            info!("Attempt #{} to join wifi network: '{}'", attempt, ssid);
-            match control.join_wpa2(ssid, password).await {
-                Ok(_) => {
-                    info!("Joined wifi network: '{}'", ssid);
-                    wait_for_dhcp(stack).await;
-                    control.gpio_set(0, false).await;
-                    monitor_loop(&device_id_hex, ssid, stack, &mut control, CONFIG).await;
-                }
-                Err(e) => {
-                    attempt += 1;
-                    error!("Error joining wifi: {:?}", e);
-                }
+    let ssid_name =
+        core::str::from_utf8(&SSID_NAME[MARKER_LENGTH..(MARKER_LENGTH + SSID_NAME_LENGTH)])
+            .unwrap()
+            .trim();
+    let ssid_pass =
+        core::str::from_utf8(&SSID_PASS[MARKER_LENGTH..(MARKER_LENGTH + SSID_PASS_LENGTH)])
+            .unwrap()
+            .trim();
+
+    let mut attempt = 1;
+    while attempt <= WIFI_JOIN_RETRY_ATTEMPT_LIMIT {
+        info!("Attempt #{} to join wifi network: '{}'", attempt, ssid_name);
+        match control.join_wpa2(ssid_name, ssid_pass).await {
+            Ok(_) => {
+                info!("Joined wifi network: '{}'", ssid_name);
+                wait_for_dhcp(stack).await;
+                control.gpio_set(0, false).await;
+                monitor_loop(&device_id_hex, ssid_name, stack, &mut control, CONFIG).await;
+            }
+            Err(e) => {
+                attempt += 1;
+                error!("Error joining wifi: {:?}", e);
             }
         }
-        error!("Retry count exceeded");
     }
+    error!("Retry count exceeded");
     info!("Exiting");
 }
