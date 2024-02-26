@@ -178,7 +178,8 @@ impl Device {
         }
 
         Response::ok(format!(
-            "Device ID: {} State: {}",
+            "TimeStamp: {} Device ID: {} State: {}",
+            Date::now().to_string(),
             self.state.id().to_string(),
             self.device_state
         ))
