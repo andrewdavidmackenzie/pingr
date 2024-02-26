@@ -147,10 +147,9 @@ async fn monitor_loop<'a>(
 
         match response {
             Ok(response) => {
-                info!("Response status: {:?}", response.status);
                 if let Ok(payload) = response.body().read_to_end().await {
                     let s = core::str::from_utf8(payload).unwrap();
-                    info!("Report sent: response = {}", s);
+                    info!("OK {}", s);
                 }
             }
             Err(e) => {
