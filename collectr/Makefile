@@ -1,4 +1,7 @@
-all:
+all: build
+
+.PHONY: build
+build:
 	cargo clippy
 	npx wrangler deploy --dry-run --outdir=dist
 
