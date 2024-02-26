@@ -3,7 +3,6 @@ use data_model::MonitorReport;
 use serde_derive::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fmt::{Display, Formatter};
-use std::time::{Duration, Instant};
 use worker::durable_object;
 use worker::*;
 
@@ -50,6 +49,7 @@ pub struct StateChange {
     pub id: String,
     pub new_state: DeviceState,
     pub connection: Option<String>,
+    pub timestamp: String,
 }
 
 #[durable_object]
@@ -144,7 +144,8 @@ impl Device {
         _report: Option<MonitorReport>,
         connection: Option<Cow<'_, str>>,
     ) -> Result<Response> {
-        console_log!("Event: {}", report_type);
+        let timestamp = Date::now().to_string();
+        console_log!("Event: {} TimeStamp: {}", report_type, timestamp);
 
         // Note: `New` is not one of the possible states set below, so if this is the first time the DO for this
         // device runs it MUST result in a different state (Reporting would be normal, but others in error cases)
@@ -158,7 +159,7 @@ impl Device {
                         .set_alarm(((period + MARGIN_SECONDS) * 1000) as i64)
                         .await?;
                 }
-                self.new_state(Reporting, connection).await?;
+                self.new_state(Reporting, connection, &timestamp).await?;
             }
             "stop" => {
                 // A Stop report was received
@@ -166,20 +167,20 @@ impl Device {
                     console_warn!("Stop Report with device in Stopped state");
                 }
                 self.state.storage().delete_alarm().await?;
-                self.new_state(Stopped, connection).await?;
+                self.new_state(Stopped, connection, &timestamp).await?;
             }
             _ => match &self.device_state {
                 // alarm was sent - so an expected report didn't arrive by the expected time
                 New => console_warn!("Report overdue with device in New state"),
                 Stopped => console_warn!("Report overdue with device in Stopped state"),
                 Offline => console_warn!("Report overdue with device in Offline state"),
-                Reporting => self.new_state(Offline, connection).await?,
+                Reporting => self.new_state(Offline, connection, &timestamp).await?,
             },
         }
 
         Response::ok(format!(
             "TimeStamp: {} Device ID: {} State: {}",
-            Date::now().to_string(),
+            timestamp,
             self.state.id().to_string(),
             self.device_state
         ))
@@ -191,6 +192,7 @@ impl Device {
         &mut self,
         new_state: DeviceState,
         connection: Option<Cow<'_, str>>,
+        timestamp: &str,
     ) -> Result<()> {
         if self.device_state != new_state {
             let id = &self.state.id().to_string();
@@ -215,6 +217,7 @@ impl Device {
                 id: id.to_string(),
                 new_state: self.device_state.clone(),
                 connection: connection.map(|s| s.to_string()),
+                timestamp: timestamp.to_owned(),
             };
             queue.send(&state_change).await?;
         }

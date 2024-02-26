@@ -103,15 +103,14 @@ pub async fn main(message_batch: MessageBatch<StateChange>, env: Env, _ctx: Cont
 
     // Loop through the messages
     for message in messages {
+        let state_change: StateChange = message.body;
+
         // Log the message and meta data
         console_log!(
-            "Got message {:?}, with id {} and timestamp: {}",
-            message.body,
+            "Got state-change with message.id: {} state-change timestamp: {}",
             message.id,
-            message.timestamp.to_string()
+            state_change.timestamp,
         );
-
-        let state_change: StateChange = message.body;
 
         // Store the device state in KV store that can be read elsewhere
         let kv = env.kv(DEVICE_STATUS_KV_NAMESPACE)?;
