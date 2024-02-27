@@ -7,7 +7,9 @@ repository.workspace = true
 readme.workspace = true
 edition.workspace = true
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "viewr"
+path = "src/viewr.rs"
 
 [dependencies]
 data_model = { path = "../data_model"}
