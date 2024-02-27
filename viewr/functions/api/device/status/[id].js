@@ -11,5 +11,5 @@ export async function onRequestGet(context) {
     return new Response('Not found', { status: 404 })
   }
 
-  return Response.json(status);
+  return new Response(status);
 }
