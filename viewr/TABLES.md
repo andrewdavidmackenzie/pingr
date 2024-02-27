@@ -10,8 +10,6 @@ storage and it does not interact with the KV store. When a device changes state,
 that tracks the device's state.
   - Processes `StateChange` events from the "stats-changes" queue:
     - Updating the device's status in the `DEVICE_STATUS` KV Namespace
-    - Creates a DeviceID to Connection Mapping in the `DEVICE_ID_CONNECTION_MAPPING` KV Namespace if one does not 
-      already exist.
     - Updates the device's status in the `CONNECTION_DEVICE_STATUS` KV Namespace
     - Creates an entry for the device in the `DEVICE_DETAILS` KV Namespace, with default contents, if one does not 
       already exist. This is to facilitate later editing of the details for new devices being added.
@@ -22,11 +20,8 @@ files there is a constant defined that matches that name, and that is what is us
 | Name                         | Visibility | Key Structure                   | Contents            |
 |------------------------------|------------|---------------------------------|---------------------|
 | DEVICE_ACCOUNT_MAPPING       | Device     | DeviceID                        | AccountId           |
-| DEVICE_ID_CONNECTION_MAPPING | Account    | DeviceID                        | Connection          |
-| DEVICE_ID_CONNECTION_MAPPING | Account    | DeviceID                        | Connection          |
-| DEVICE_STATUS                | Account    | DeviceID                        | DeviceStatus        |
-| CONNECTION_DEVICE_STATUS     | Account    | ConnectionDescription::DeviceID | DeviceStatus        |
-| CONNECTION_LIST              | Account    | not implemented yet             | not implemented yet |
+| DEVICE_STATUS                | Account    | DeviceID                        | StateChange         |
+| CONNECTION_DEVICE_STATUS     | Account    | ConnectionDescription::DeviceID | StateChange         |
 | DEVICE_DETAILS               | Account    | DeviceID                        | DeviceDetails       |
 
 ## Key Structure
@@ -59,14 +54,15 @@ This is used to fetch the `AccountId` associated with a device (via `DeviceId`),
 receives events on a device, can fetch the `AccountId` so it can use that in the update of all subsequent
 tables.
 
-### `DEVICE_ID_CONNECTION_MAPPING`
-
 ### `DEVICE_STATUS`
+For each device, this stores the status it is in, as tracked by it's Durable Object.
+The Value stored is a `StateChange` struct, which as the state of the device, an optional connection and the
+timestamp when the change to that state occurred.
 
 ### `CONNECTION_DEVICE_STATUS`
-
-### `CONNECTION_LIST`
-Not implemented yet.
+Allows us to form a list of Connections with each of the devices reporting against it, for use in the UI.
+The Value stored is a `StateChange` struct, which as the state of the device, an optional connection and the
+timestamp when the change to that state occurred.
 
 ### `DEVICE_DETAILS`
 Used to contain details describing a device, entered by an admin via the UI, not as reported by the device.
@@ -87,8 +83,8 @@ Serialization of `DeviceStatus` type to a String.
 
 e.g. `Reporting`, `Offline` or `Stopped`
 
-### `DeviceStatus`
-Serialization of `DeviceDetails` type to JSON.
+### `StateChange`
+Serialization of `StageChange` struct to JSON.
 
 e.g. `{"friendly_name" : "PiZeroW0"}`
 
