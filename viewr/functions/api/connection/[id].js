@@ -7,11 +7,11 @@ export async function onRequestGet(context) {
     return new Response('Not found', { status: 404 })
   }
 
-  const status = await context.env.CONNECTION_DEVICE_STATUS.get(connection_device_id);
+  const state_change = await context.env.CONNECTION_DEVICE_STATUS.get(connection_device_id);
 
-  if (!status) {
+  if (!state_change) {
     return new Response('Not found', { status: 404 })
   }
 
-  return Response.json(status);
+  return new Response(state_change);
 }
