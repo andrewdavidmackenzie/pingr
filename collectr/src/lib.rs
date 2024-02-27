@@ -1,15 +1,13 @@
-use crate::device::StateChange;
 use std::borrow::Cow;
 use worker::*;
 
-use data_model::DeviceDetails;
+use data_model::{DeviceDetails, StateChange};
 
 mod device;
 
 const DEVICE_STATUS_KV_NAMESPACE: &str = "DEVICE_STATUS";
 const DEVICE_DETAILS_KV_NAMESPACE: &str = "DEVICE_DETAILS";
 const CONNECTION_DEVICE_STATUS_KV_NAMESPACE: &str = "CONNECTION_DEVICE_STATUS";
-const DEVICE_ID_CONNECTION_MAPPING_KV_NAMESPACE: &str = "DEVICE_ID_CONNECTION_MAPPING";
 
 /*
 let headers = req.headers();
@@ -104,51 +102,31 @@ pub async fn main(message_batch: MessageBatch<StateChange>, env: Env, _ctx: Cont
     // Loop through the messages
     for message in messages {
         let state_change: StateChange = message.body;
+        let id = &state_change.id;
 
-        // Log the message and meta data
         console_log!(
-            "Got state-change with message.id: {} state-change timestamp: {}",
+            "Got state-change with message.id: {} state-change: {:?}",
             message.id,
-            state_change.timestamp,
+            state_change,
         );
 
-        // Store the device state in KV store that can be read elsewhere
         let kv = env.kv(DEVICE_STATUS_KV_NAMESPACE)?;
-        kv.put(&state_change.id, &state_change.new_state)?
-            .execute()
-            .await?;
+        kv.put(id, &state_change)?.execute().await?;
 
-        // Store the mapping of DeviceId to Connection
-        let kv = env.kv(DEVICE_ID_CONNECTION_MAPPING_KV_NAMESPACE)?;
-        let con = match state_change.connection {
-            None => {
-                // If no connection is supplied - try and find one in the DeviceID to Connections table
-                let c = kv.get(&state_change.id).text().await?;
-                // and if none there then we can't get it so default to "Unknown"
-                c.unwrap_or("Unknown".to_string())
-            }
-            Some(c) => {
-                // Store the DeviceID -> Connection mapping in KV store
-                kv.put(&state_change.id, c.to_string())?.execute().await?;
-                c
-            }
-        };
-
-        // Store the Connection::DeviceID -> status in KV store
-        let kv = env.kv(CONNECTION_DEVICE_STATUS_KV_NAMESPACE)?;
-        kv.put(
-            &format!("{}::{}", con, state_change.id),
-            state_change.new_state,
-        )?
-        .execute()
-        .await?;
-
-        // If the device does not have an entry in the DEVICE_DETAILS table, create a default one
-        let kv = env.kv(DEVICE_DETAILS_KV_NAMESPACE)?;
-        if kv.get(&state_change.id).text().await?.is_none() {
-            kv.put(&state_change.id, DeviceDetails::default())?
+        if let Some(con) = &state_change.connection {
+            // Store the Connection::DeviceID -> StateChange in KV store
+            let kv = env.kv(CONNECTION_DEVICE_STATUS_KV_NAMESPACE)?;
+            let connection_device_key = format!("{}::{}", con, id);
+            kv.put(&connection_device_key, &state_change)?
                 .execute()
                 .await?;
+        }
+
+        // If the device does not have an entry in the DEVICE_DETAILS table, it's a new device so
+        // create a default one - that can then be edited via GUI later.
+        let kv = env.kv(DEVICE_DETAILS_KV_NAMESPACE)?;
+        if kv.get(id).text().await?.is_none() {
+            kv.put(id, DeviceDetails::default())?.execute().await?;
         }
     }
 

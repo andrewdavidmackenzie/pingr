@@ -1,3 +1,4 @@
+use data_model::StateChange;
 use leptos::{error::Result, *};
 use reqwasm;
 use serde::{Deserialize, Serialize};
@@ -45,25 +46,22 @@ fn DeviceList() -> impl IntoView {
     }
 }
 
-async fn api_device_status_get(key: &str) -> Result<String> {
+async fn api_device_status_get(key: &str) -> Result<StateChange> {
     let res = reqwasm::http::Request::get(&format!("/api/device/status/{key}"))
         .send()
         .await?
-        .json::<String>()
+        .json::<StateChange>()
         .await?;
     Ok(res)
 }
 
-async fn api_device_status_list() -> Result<Vec<(String, String)>> {
+async fn api_device_statechanges_list() -> Result<Vec<StateChange>> {
     let device_ids = api_device_list().await?;
 
     let mut statuses = vec![];
 
     for device_id in device_ids {
-        statuses.push((
-            device_id.clone(),
-            api_device_status_get(&device_id.to_string()).await?,
-        ));
+        statuses.push(api_device_status_get(&device_id.to_string()).await?);
     }
 
     Ok(statuses)
@@ -72,38 +70,40 @@ async fn api_device_status_list() -> Result<Vec<(String, String)>> {
 #[component]
 #[allow(non_snake_case)]
 pub fn DeviceStatusList() -> impl IntoView {
-    let device_statuses = create_local_resource(move || (), |_| api_device_status_list());
+    let device_state_changes =
+        create_local_resource(move || (), |_| api_device_statechanges_list());
 
     view! {
         <h1>"Device Status"</h1> {
-            move || match device_statuses.get() {
+            move || match device_state_changes.get() {
                 None => view!{ <p>"Searching for devices..."</p> }.into_view(),
-                Some(Ok(devices)) => {
-                    if devices.is_empty() {
+                Some(Ok(devices_states)) => {
+                    if devices_states.is_empty() {
                         view!{ <p>No devices found</p> }.into_view()
                     } else {
                         // TODO move all this into the api method
-                        let mut status_map = HashMap::<&str, Vec<&String>>::new();
-                        for (device_id, device_status) in &devices {
-                            status_map.entry(device_status)
+                        let mut state_change_map = HashMap::<String, Vec<StateChange>>::new();
+                        for state_change in devices_states {
+                            state_change_map.entry(state_change.state.to_string())
                                 .or_insert_with(Vec::new)
-                                .push(device_id);
+                                .push(state_change);
                         }
-                        ["Reporting", "Offline", "Stopped"].map(|status| {
-                            match status_map.get(status) {
-                                Some(id_list) => {
+                        // For each state get the vector of StateChanges for the devices in that state
+                        ["Reporting", "Offline", "Stopped"].map(|state| {
+                            match state_change_map.get(state) {
+                                Some(state_change_vec) => {
                                     view!{
-                                        <ul>{status}
-                                            {
-                                                id_list.into_iter()
-                                                    .map(|device_id| view! {<li>{device_id.to_string()}</li>})
-                                                    .collect_view()
-                                            }
+                                        <ul>{state}
+                                        {
+                                            state_change_vec.into_iter()
+                                                .map(|state_change| view! {<li>{state_change.id.to_string()}</li>})
+                                                .collect_view()
+                                        }
                                         </ul>
                                     }.into_view()
                                 },
                                 None => {
-                                    view!{ <ul>{status}</ul>}.into_view()
+                                    view!{ <ul>{state}</ul>}.into_view()
                                 }
                             }
                         }).collect_view()
@@ -112,7 +112,7 @@ pub fn DeviceStatusList() -> impl IntoView {
                 Some(Err(_)) => view! {<p>"Error finding devices"</p>}.into_view(),
             }
         }
-        <button on:click=move |_| { device_statuses.refetch() }>
+        <button on:click=move |_| { device_state_changes.refetch() }>
             "Refresh"
         </button>
     }
