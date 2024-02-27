@@ -13,6 +13,8 @@ wasm-opt = false
 
 [lib]
 crate-type = ["cdylib"]
+name = "worker"
+path = "src/worker.rs"
 
 [dependencies]
 data_model = { path = "../data_model"}
