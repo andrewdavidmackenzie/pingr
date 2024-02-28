@@ -1,3 +1,4 @@
+use chrono::DateTime;
 use data_model::{DeviceDetails, StateChange};
 use leptos::{error::Result, *};
 use reqwasm;
@@ -93,9 +94,12 @@ pub fn ConnectionDeviceStatusList() -> impl IntoView {
                                             {
                                                 device_status_list.iter().map(|(device_id, state_change, name)| {
                                                     let status_style = format!("tooltip device-status {}", state_change.state);
+                                                    let since = DateTime::from_timestamp_millis(state_change.timestamp as i64).unwrap();
+                                                    let custom_format = since.format("%H:%M on %d-%m-%Y");
+                                                    let tooltiptext = format!("{device_id} since {}", custom_format);
                                                     view!{
                                                         <div class=status_style>{name}
-                                                            <span class="tooltiptext">{device_id}</span>
+                                                            <span class="tooltiptext">{tooltiptext}</span>
                                                         </div>}
                                                 }).collect_view()
                                             }
