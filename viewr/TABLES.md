@@ -35,15 +35,9 @@ A valid visibility should be passed to all methods to read or write to/from the 
 - Visibility::Device - requires a valid DeviceId
 - Visibility::Account - requires a valid AccountId
 
-- Will also need a userid to accountid mapping, so that when a user logs in the accountid can be found and then 
+- Will also need a `UserId` to `AccountId` mapping, so that when a user logs in the `AccountId` can be found and then 
 used in all subsequent requests to these tables? Or could account id be some meta-data associated with user so that
 we get it as soon as they are logged in?
-
-TODO
-modify the relevant api methods, so that accept the visibility parameter (which will be a String to be used as 
-the prefix)
-
-TODO method to associate a device to a specific account, creating an entry into the Device_Account_Mapping table.
 
 ## Contents 
 Describes what is in the `value` part of this key-value pair.
