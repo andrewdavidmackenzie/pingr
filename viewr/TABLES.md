@@ -1,5 +1,5 @@
 # Tables description
-This file describes the tables in the KV store being used by collectr and viewr.
+This file describes the tables in the KV store being used by collectr (worker only) and viewr (UI).
 
 `collectr` consists of:
 - A `DurableObject` that tracks the status of a reporting device. It stores the DO state in the DO's own state
@@ -17,32 +17,34 @@ that tracks the device's state.
 They are referred to using the binding name (see wrangler.toml). Generally, in the rust source
 files there is a constant defined that matches that name, and that is what is used in the code.
 
-| Name                         | Visibility | Key Structure                   | Contents            |
-|------------------------------|------------|---------------------------------|---------------------|
-| DEVICE_ACCOUNT_MAPPING       | Device     | DeviceID                        | AccountId           |
-| DEVICE_STATUS                | Account    | DeviceID                        | StateChange         |
-| CONNECTION_DEVICE_STATUS     | Account    | ConnectionDescription::DeviceID | StateChange         |
-| DEVICE_DETAILS               | Account    | DeviceID                        | DeviceDetails       |
+| Table Name               | Visibility | Key Structure                   | Contents            |
+|--------------------------|------------|---------------------------------|---------------------|
+| DEVICE_ACCOUNT_MAPPING   | Global     | DeviceID                        | AccountId           |
+| DEVICE_STATUS            | Account    | DeviceID                        | StateChange         |
+| CONNECTION_DEVICE_STATUS | Account    | ConnectionDescription::DeviceID | StateChange         |
+| DEVICE_DETAILS           | Account    | DeviceID                        | DeviceDetails       |
+
+## Visibility
+Visibility restricts the code's ability to work with data in a Table, for the purposes of security and 
+multi-tenancy.
+
+### `Global` Visibility
+Anyone able to form a valid key for the table can work with it.
+
+### `Account` Visibility
+To be able to work with data in tables with `Account` visibility, code must have a valid `AccountId`, plus be able to 
+form valid keys.
+It will only be possible to work with (Create, Read, Update, Delete) Key-Value pairs that belong to the account 
+associated with the `AccountId`.
 
 ## Key Structure
 Describes how the key is formed. KV stores support listing keys that match a prefix, and this is used in some
 of the tables to enable particular functionality, hence the components of the key and their order is critical.
 
-## Visibility
-Visibility of the table's contents to components, accounts, users etc. 
-
-A valid visibility should be passed to all methods to read or write to/from the given table.
-- Visibility::Device - requires a valid DeviceId
-- Visibility::Account - requires a valid AccountId
-
-- Will also need a `UserId` to `AccountId` mapping, so that when a user logs in the `AccountId` can be found and then 
-used in all subsequent requests to these tables? Or could account id be some meta-data associated with user so that
-we get it as soon as they are logged in?
-
 ## Contents 
 Describes what is in the `value` part of this key-value pair.
 
-## Descriptions
+## Table Descriptions
 ### `DEVICE_ACCOUNT_MAPPING`
 This is used to fetch the `AccountId` associated with a device (via `DeviceId`), so that the worked when it
 receives events on a device, can fetch the `AccountId` so it can use that in the update of all subsequent
@@ -61,11 +63,11 @@ timestamp when the change to that state occurred.
 ### `DEVICE_DETAILS`
 Used to contain details describing a device, entered by an admin via the UI, not as reported by the device.
 
-## Types 
+## Data Types 
 ### `DeviceID`
 The unique ID of the DurableObject that represents a Device, as a String.
 
-e.g. `5082eee0ff53ce01450a19252c80c816905c941c1ee56bfa319494b908409d1f
+e.g. `5082eee0ff53ce01450a19252c80c816905c941c1ee56bfa319494b908409d1f`
 
 ### `Connection`
 Serialization of `Connection` enum type to a String.
@@ -84,5 +86,6 @@ e.g. `{"friendly_name" : "PiZeroW0"}`
 
 ### `AccountId`
 Serialization of `AccountId` to String. Account Ids should be large and very hard to guess.
+TODO might rename to GroupId....
 
 e.g. hdsakhsjklfdsjñfjks
