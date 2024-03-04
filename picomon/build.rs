@@ -32,17 +32,17 @@ fn generate_config(config: config::Config, filename: &str, ssid: SsidSpec) {
         .unwrap();
     file.write_all(b"use crate::pico_config::ReportSpec;\n")
         .unwrap();
-    file.write_all(b"pub(crate) const MARKER_LENGTH : usize = \"$SSID_NAME::\".len();")
+    file.write_all(b"pub(crate) const MARKER_LENGTH : usize = \"$SSID_NAME::\".len();\n")
         .unwrap();
-    file.write_all(b"pub(crate) const SSID_NAME_LENGTH : usize = 32;")
+    file.write_all(b"pub(crate) const SSID_NAME_LENGTH : usize = 32;\n")
         .unwrap();
-    file.write_all(b"pub(crate) const SSID_PASS_LENGTH : usize = 63;")
+    file.write_all(b"pub(crate) const SSID_PASS_LENGTH : usize = 63;\n")
         .unwrap();
     // SSID Names can be upto 32 ASCII characters plus 24 for markers = 56
     // right pad the provided string with spaces upto 32 ASCII characters (bytes)
     file.write_all(
         format!(
-            "pub(crate) const SSID_NAME : &[u8; 56] = b\"$SSID_NAME::{: <32}$SSID_NAME::\";\n",
+            "pub(crate) const SSID_NAME : &str = \"$SSID_NAME::{: <32}$SSID_NAME::\";\n",
             ssid.ssid_name
         )
         .as_bytes(),
@@ -51,7 +51,7 @@ fn generate_config(config: config::Config, filename: &str, ssid: SsidSpec) {
     // SSID Passwords can be upto 63 ASCII characters plus 24 for markers = 87
     file.write_all(
         format!(
-            "pub(crate) const SSID_PASS : &[u8; 87] = b\"$SSID_PASS::{: <63}$SSID_PASS::\";\n",
+            "pub(crate) const SSID_PASS : &str = \"$SSID_PASS::{: <63}$SSID_PASS::\";\n",
             ssid.ssid_pass
         )
         .as_bytes(),

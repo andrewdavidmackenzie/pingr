@@ -223,14 +223,8 @@ async fn main(spawner: Spawner) {
 
     spawner.spawn(net_task(stack)).unwrap();
 
-    let ssid_name =
-        core::str::from_utf8(&SSID_NAME[MARKER_LENGTH..(MARKER_LENGTH + SSID_NAME_LENGTH)])
-            .unwrap()
-            .trim();
-    let ssid_pass =
-        core::str::from_utf8(&SSID_PASS[MARKER_LENGTH..(MARKER_LENGTH + SSID_PASS_LENGTH)])
-            .unwrap()
-            .trim();
+    let ssid_name = SSID_NAME[MARKER_LENGTH..(MARKER_LENGTH + SSID_NAME_LENGTH)].trim();
+    let ssid_pass = SSID_PASS[MARKER_LENGTH..(MARKER_LENGTH + SSID_PASS_LENGTH)].trim();
 
     let mut attempt = 1;
     while attempt <= WIFI_JOIN_RETRY_ATTEMPT_LIMIT {
