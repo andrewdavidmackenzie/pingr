@@ -1,8 +1,13 @@
 all: run
 
+clean:
+	cargo clean
+
 run: build
 	cargo run --release
 
 build:
 	cargo build --release
-	@cd .. && cargo run -p configr -- target/thumbv6m-none-eabi/release/picomon
+
+config: build
+	@cd .. && cargo run -p configr -- MOVISTAR_8A9E E68N8MA422GRQJQTPqjN target/thumbv6m-none-eabi/release/picomon
