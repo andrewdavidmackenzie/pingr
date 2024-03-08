@@ -19,6 +19,8 @@ mod pico_config;
 
 const CONFIG_FILE_NAME: &str = "monitor.toml";
 const SSID_FILE_NAME: &str = "ssid.toml";
+const SSID_NAME_LENGTH: usize = 32;
+const SSID_PASS_LENGTH: usize = 63;
 
 // Given a Config struct and a filename, generate that as a source file in OUT_DIR
 fn generate_config(config: config::Config, filename: &str, ssid: SsidSpec) {
@@ -42,7 +44,7 @@ fn generate_config(config: config::Config, filename: &str, ssid: SsidSpec) {
     // right pad the provided string with spaces upto 32 ASCII characters (bytes)
     file.write_all(
         format!(
-            "pub(crate) const SSID_NAME : &str = \"$SSID_NAME::{: <32}$SSID_NAME::\";\n",
+            "pub(crate) const SSID_NAME : &str = \"$SSID_NAME::{: <SSID_NAME_LENGTH$}$SSID_NAME::\";\n",
             ssid.ssid_name
         )
         .as_bytes(),
@@ -51,7 +53,7 @@ fn generate_config(config: config::Config, filename: &str, ssid: SsidSpec) {
     // SSID Passwords can be upto 63 ASCII characters plus 24 for markers = 87
     file.write_all(
         format!(
-            "pub(crate) const SSID_PASS : &str = \"$SSID_PASS::{: <63}$SSID_PASS::\";\n",
+            "pub(crate) const SSID_PASS : &str = \"$SSID_PASS::{: <SSID_PASS_LENGTH$}$SSID_PASS::\";\n",
             ssid.ssid_pass
         )
         .as_bytes(),
