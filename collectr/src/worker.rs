@@ -36,7 +36,7 @@ async fn device_report(req: Request, ctx: RouteContext<()>) -> Result<Response> 
     }
 }
 
-#[event(fetch)]
+#[event(fetch, respond_with_errors)]
 async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     let router = Router::new();
 
