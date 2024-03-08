@@ -1,8 +1,8 @@
 ## Useful commands related to system services
 
 ### Linux
-systemctl status mackenzie-serres-pingr.wimon.service
-journalctl
+`systemctl status mackenzie-serres-pingr.wimon.service`
+`journalctl` can also be used.
 
 ### Macos
 Enable it if is disabled
