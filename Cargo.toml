@@ -1,5 +1,5 @@
 [workspace]
-members = ["wimon", "collectr", "viewr", "picomon", "configr"]
+members = ["collectr", "configr", "data_model", "picomon", "viewr", "wimon"]
 default-members = ["wimon"]
 resolver = "2"
 
