@@ -101,23 +101,23 @@ pub async fn main(message_batch: MessageBatch<StateChange>, env: Env, _ctx: Cont
 
     // Loop through the messages
     for message in messages {
-        let state_change: StateChange = message.body;
+        let state_change: &StateChange = message.body();
         let id = &state_change.id;
 
         console_log!(
             "Got state-change with message.id: {} state-change: {:?}",
-            message.id,
+            message.id(),
             state_change,
         );
 
         let kv = env.kv(DEVICE_STATUS_KV_NAMESPACE)?;
-        kv.put(id, &state_change)?.execute().await?;
+        kv.put(id, state_change)?.execute().await?;
 
         if let Some(con) = &state_change.connection {
             // Store the Connection::DeviceID -> StateChange in KV store
             let kv = env.kv(CONNECTION_DEVICE_STATUS_KV_NAMESPACE)?;
             let connection_device_key = format!("{}::{}", con, id);
-            kv.put(&connection_device_key, &state_change)?
+            kv.put(&connection_device_key, state_change)?
                 .execute()
                 .await?;
         }
