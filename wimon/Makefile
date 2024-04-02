@@ -1,5 +1,7 @@
 all: release
 
+build: debug
+
 debug:
 	cargo clippy
 	cargo test
