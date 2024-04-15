@@ -1,12 +1,17 @@
-use config::{Config, MonitorSpec};
+use config::Config;
+#[cfg(feature = "ssids")]
+use config::MonitorSpec;
 use curl::easy::Easy;
-use data_model::{Connection, ConnectionReport, DeviceId, MonitorReport, ReportType, Stats};
+use data_model::{Connection, DeviceId, MonitorReport, ReportType};
+#[cfg(feature = "ssids")]
+use data_model::{ConnectionReport, Stats};
 use machineid_rs::{Encryption, HWIDComponent, IdBuilder};
 use serde_json::json;
 use std::io;
 use std::io::Read;
 use std::process::Command;
 use std::sync::mpsc::Receiver;
+#[cfg(feature = "ssids")]
 use wifiscanner::Wifi;
 
 pub(crate) fn monitor_loop(config: Config, term_receiver: Receiver<()>) -> Result<(), io::Error> {
@@ -24,6 +29,7 @@ pub(crate) fn monitor_loop(config: Config, term_receiver: Receiver<()>) -> Resul
     send_report(&config, &device_id, ReportType::Stop, &measure(&config)?)
 }
 
+#[cfg(feature = "ssids")]
 fn add_report(report: &mut MonitorReport, wifi: &Wifi) {
     report.connections.push(ConnectionReport {
         connection: Connection::SSID(wifi.ssid.clone()),
@@ -32,10 +38,16 @@ fn add_report(report: &mut MonitorReport, wifi: &Wifi) {
         }),
     });
 }
+#[cfg_attr(not(feature = "ssids"), allow(unused_variables))]
 fn measure(config: &Config) -> Result<MonitorReport, io::Error> {
-    let ssid =
-        get_ssid().map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Could not get SSID"))?;
+    let ssid = get_ssid().map_err(|e| {
+        io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("Could not get SSID: '{e}'"),
+        )
+    })?;
 
+    #[cfg_attr(not(feature = "ssids"), allow(unused_mut))]
     let mut report = MonitorReport {
         connection_used: Connection::SSID(ssid.clone()),
         connections: vec![],
@@ -149,13 +161,18 @@ fn get_device_id() -> Result<DeviceId, io::Error> {
 
 #[cfg(target_os = "macos")]
 fn get_ssid() -> Result<String, io::Error> {
-    let output = Command::new(
-        "/System/Library/PrivateFrameworks/Apple80211.\
-         framework/Versions/Current/Resources/airport",
-    )
-    .arg("-I")
-    .output()
-    .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "Command not found"))?;
+    let output = Command::new("/usr/sbin/networksetup")
+        .arg("-getairportnetwork")
+        .arg("en0")
+        .output()
+        .map_err(|e| io::Error::new(io::ErrorKind::NotFound, e))?;
+
+    if !output.status.success() {
+        return Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("{}", String::from_utf8_lossy(&output.stderr)),
+        ));
+    }
 
     let data = String::from_utf8_lossy(&output.stdout);
 
@@ -166,14 +183,14 @@ fn get_ssid() -> Result<String, io::Error> {
 fn parse_ssid(data: &str) -> Result<String, io::Error> {
     for line in data.lines() {
         let mut pair = line.trim().split(':');
-        if pair.next().unwrap() == "SSID" {
+        if pair.next().unwrap() == "Current Wi-Fi Network" {
             return Ok(pair.next().unwrap().trim().to_owned());
         }
     }
 
     Err(io::Error::new(
         io::ErrorKind::NotFound,
-        "Could not parse SSID name",
+        format!("Could not parse SSID name: '{data}'"),
     ))
 }
 

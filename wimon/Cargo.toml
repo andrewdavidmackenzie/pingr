@@ -12,7 +12,7 @@ name = "wimon"
 path = "src/main.rs"
 
 [features]
-default = ["ssids"]
+default = []
 ssids = ["wifiscanner"]
 
 [dependencies]
