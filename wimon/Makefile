@@ -33,6 +33,7 @@ pibuild:
 .PHONY: picopy
 picopy: pibuild
 	scp ../target/aarch64-unknown-linux-gnu/release/wimon andrew@$(PI_TARGET):~/wimon
+	scp ../monitor.toml andrew@$(PI_TARGET):~/
 
 .PHONY: ssh
 ssh:
