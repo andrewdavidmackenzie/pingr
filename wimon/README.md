@@ -1,7 +1,9 @@
 ## Useful commands related to system services
 
 ### Linux
-`systemctl status mackenzie-serres-pingr.wimon.service`
+`systemctl status mackenzie-serres-pingr.wimon.service` - get a status update (including some logs output)
+for the service.
+
 `journalctl` can also be used.
 
 ### Macos
