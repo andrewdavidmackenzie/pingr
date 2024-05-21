@@ -8,11 +8,12 @@
 //! updating `memory.x` ensures a rebuild of the application with the
 //! new memory settings.
 
-use config::SsidSpec;
 use std::env;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+
+use config::SsidSpec;
 
 #[path = "src/pico_config.rs"]
 mod pico_config;
@@ -22,7 +23,8 @@ const SSID_FILE_NAME: &str = "ssid.toml";
 const SSID_NAME_LENGTH: usize = 32;
 const SSID_PASS_LENGTH: usize = 63;
 
-// Given a Config struct and a filename, generate that as a source file in OUT_DIR
+// Given a Config, a filename and an optional override of SSID details,
+// generate that as a source file in OUT_DIR
 fn generate_config(config: config::Config, filename: &str, ssid: SsidSpec) {
     let out = env::var("OUT_DIR").unwrap();
     let out_dir = Path::new(&out);
@@ -40,6 +42,7 @@ fn generate_config(config: config::Config, filename: &str, ssid: SsidSpec) {
         .unwrap();
     file.write_all(b"pub(crate) const SSID_PASS_LENGTH : usize = 63;\n")
         .unwrap();
+
     // SSID Names can be upto 32 ASCII characters plus 24 for markers = 56
     // right pad the provided string with spaces upto 32 ASCII characters (bytes)
     file.write_all(
@@ -47,18 +50,18 @@ fn generate_config(config: config::Config, filename: &str, ssid: SsidSpec) {
             "pub(crate) const SSID_NAME : &str = \"$SSID_NAME::{: <SSID_NAME_LENGTH$}$SSID_NAME::\";\n",
             ssid.ssid_name
         )
-        .as_bytes(),
+            .as_bytes(),
     )
-    .unwrap();
+        .unwrap();
     // SSID Passwords can be upto 63 ASCII characters plus 24 for markers = 87
     file.write_all(
         format!(
             "pub(crate) const SSID_PASS : &str = \"$SSID_PASS::{: <SSID_PASS_LENGTH$}$SSID_PASS::\";\n",
             ssid.ssid_pass
         )
-        .as_bytes(),
+            .as_bytes(),
     )
-    .unwrap();
+        .unwrap();
 
     file.write_all(b"pub(crate) const CONFIG: Config = ")
         .unwrap();
@@ -88,17 +91,17 @@ fn generate_config(config: config::Config, filename: &str, ssid: SsidSpec) {
                     "        period_seconds: {},",
                     report.period_seconds.unwrap()
                 )
-                .as_bytes(),
+                    .as_bytes(),
             )
-            .unwrap();
+                .unwrap();
             file.write_all(
                 format!(
                     "        base_url: \"{}\",",
                     report.base_url.as_ref().unwrap()
                 )
-                .as_bytes(),
+                    .as_bytes(),
             )
-            .unwrap();
+                .unwrap();
             file.write_all(b"    }").unwrap();
             file.write_all(b"    ,").unwrap()
         }
@@ -143,7 +146,8 @@ fn main() {
         .parent()
         .unwrap()
         .join(SSID_FILE_NAME);
-    let ssid_spec = config::read_ssid(&ssid_path).expect("Could not find ssid.toml file");
+    // If we can't find a valid SsidSpec (e.g. when running in CI), then use a default one
+    let ssid_spec = config::read_ssid(&ssid_path).unwrap_or(SsidSpec::default());
 
     generate_config(config, "config.rs", ssid_spec);
 }

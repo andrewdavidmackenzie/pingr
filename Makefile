@@ -1,5 +1,10 @@
 all: picomon collectr configr viewr wimon
 
+.PHONY: deploy
+deploy:
+	@cd collectr && $(MAKE) deploy
+	@cd viewr && $(MAKE) deploy
+
 .PHONY: picomon
 picomon:
 	@cd picomon && $(MAKE) build

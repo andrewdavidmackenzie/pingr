@@ -1,7 +1,8 @@
-use serde_derive::{Deserialize, Serialize};
+use std::{env, io};
 use std::path::PathBuf;
 use std::time::Duration;
-use std::{env, io};
+
+use serde_derive::{Deserialize, Serialize};
 use url::Url;
 
 #[cfg_attr(
@@ -88,6 +89,15 @@ pub fn read_config(config_file_path: &PathBuf) -> Result<Config, io::Error> {
 pub struct SsidSpec {
     pub ssid_name: String,
     pub ssid_pass: String,
+}
+
+impl Default for SsidSpec {
+    fn default() -> Self {
+        SsidSpec {
+            ssid_name: "".to_string(),
+            ssid_pass: "".to_string(),
+        }
+    }
 }
 
 pub fn read_ssid(ssid_file_path: &PathBuf) -> Result<SsidSpec, io::Error> {

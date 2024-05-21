@@ -1,0 +1,40 @@
+name: Build
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  schedule: # Build every day at 5PM UTC
+    - cron: '0 17 * * *'
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          components: clippy
+          toolchain: stable
+
+      - name: Add Target for Pi
+        run: rustup target add thumbv6m-none-eabi
+
+      - name: Install wrangler and trunk
+        run: |
+          npm install -g wrangler
+          wrangler --version
+          cargo install trunk
+          trunk --version
+
+      - name: make
+        run: make

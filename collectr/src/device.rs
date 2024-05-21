@@ -71,8 +71,8 @@ impl Device {
 
         Response::ok(format!(
             "TimeStamp: {} Device ID: {} State: {}",
-            timestamp.to_string(),
-            self.state.id().to_string(),
+            timestamp,
+            self.state.id(),
             self.device_state
         ))
     }

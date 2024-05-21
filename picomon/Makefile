@@ -1,4 +1,4 @@
-all: run
+all: build
 
 clean:
 	cargo clean
