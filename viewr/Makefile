@@ -1,4 +1,4 @@
-all:
+all: build
 
 build:
 	trunk build --release
