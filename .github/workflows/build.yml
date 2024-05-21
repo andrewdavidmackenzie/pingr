@@ -26,10 +26,12 @@ jobs:
           components: clippy
           toolchain: stable
 
-      - name: Install wrangler
+      - name: Install wrangler and trunk
         run: |
           npm install -g wrangler
           wrangler --version
+          npm install -g trunk
+          trunk --version
 
       - name: make
         run: make
