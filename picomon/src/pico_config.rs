@@ -15,7 +15,7 @@ pub(crate) struct ReportSpec {
 }
 
 #[allow(dead_code)]
-pub(crate) struct Config {
+pub struct Config {
     pub monitor: MonitorSpec,
     pub report: ReportSpec,
 }
