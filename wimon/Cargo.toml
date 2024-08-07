@@ -19,7 +19,7 @@ ssids = ["wifiscanner"]
 data_model = { path = "../data_model" }
 
 # for creating a unique machine ID
-machineid-rs = { version = "1.2.4", git = "https://github.com/andrewdavidmackenzie/machineid-rs", branch = "patch-1"}
+machineid-rs = "1.2.4"
 
 # for reading config from a file
 serde_derive = "~1.0"
@@ -29,13 +29,13 @@ toml = { version = "0.8.8" }
 url = "2.5"
 
 # for making network requests
-curl = {version = "~0.4", default-features = false, features = ["rustls"]}
+curl = { version = "~0.4", default-features = false, features = ["rustls"] }
 
 # for catching signals
-ctrlc = {version = "3.4.1", features = ["termination"] }
+ctrlc = { version = "3.4.1", features = ["termination"] }
 
 # for installing as a system service
 service-manager = "0.6.0"
 
 # for scanning wifi and getting SSIDs visible
-wifiscanner = {version = "0.5.1", optional = true}
+wifiscanner = { version = "0.5.1", optional = true }
