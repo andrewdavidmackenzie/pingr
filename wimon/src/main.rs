@@ -1,12 +1,14 @@
-use config::MonitorSpec;
+use std::{env, io};
+use std::path::PathBuf;
+use std::sync::mpsc::channel;
+use std::time::Duration;
+
 use service_manager::{
     ServiceInstallCtx, ServiceLabel, ServiceManager, ServiceStartCtx, ServiceStopCtx,
     ServiceUninstallCtx,
 };
-use std::path::PathBuf;
-use std::sync::mpsc::channel;
-use std::time::Duration;
-use std::{env, io};
+
+use config::MonitorSpec;
 
 mod monitor;
 
@@ -47,7 +49,7 @@ fn run(config_file_path: &PathBuf) -> Result<(), io::Error> {
         println!("Control-C captured, sending Stop report");
         tx.send(()).expect("Could not send signal on channel.")
     })
-    .expect("Error setting Ctrl-C handler");
+        .expect("Error setting Ctrl-C handler");
 
     monitor::monitor_loop(config, rx)?;
 
@@ -86,6 +88,7 @@ fn install_service(service_name: &ServiceLabel, path_to_exec: &str) -> Result<()
         username: None, // Optional String for alternative user to run service.
         working_directory: Some(exec_dir),
         environment: None, // Optional list of environment variables to supply the service process.
+        autostart: true, // autostart on reboot
     })?;
 
     // Start our service using the underlying service management platform
@@ -128,9 +131,11 @@ fn uninstall_service(service_name: &ServiceLabel) -> Result<(), io::Error> {
 
 #[cfg(test)]
 mod test {
-    use super::CONFIG_FILE_NAME;
-    use config::{Config, MonitorSpec};
     use std::path::PathBuf;
+
+    use config::{Config, MonitorSpec};
+
+    use super::CONFIG_FILE_NAME;
 
     #[test]
     fn bundled_spec() {
