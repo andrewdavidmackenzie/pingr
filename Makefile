@@ -1,4 +1,7 @@
-all: picomon collectr configr viewr wimon
+all: build
+
+.PHONY: build
+build: picomon collectr configr viewr wimon
 
 .PHONY: deploy
 deploy:
