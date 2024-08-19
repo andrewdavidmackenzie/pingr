@@ -18,9 +18,7 @@ path = "src/worker.rs"
 
 [dependencies]
 data_model = { path = "../data_model" }
-# To workaround issue: https://github.com/cloudflare/workers-rs/issues/617
-js-sys = "=0.3.69"
-worker = { version = "0.3.3", features = ["queue"] }
+worker = { version = "0.3.4", features = ["queue"] }
 serde_derive = "~1.0"
 serde = "~1.0"
 serde_json = "1.0.107"
