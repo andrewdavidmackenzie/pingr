@@ -1,8 +1,11 @@
 all: build
 
-.PHONY: build
-build:
+.PHONY: clippy
+clippy:
 	cargo clippy
+
+.PHONY: build
+build: clippy
 	wrangler deploy --dry-run --outdir=dist
 
 local:
