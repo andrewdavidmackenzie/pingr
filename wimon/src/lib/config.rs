@@ -6,7 +6,7 @@ use serde_derive::{Deserialize, Serialize};
 use url::Url;
 
 #[cfg_attr(
-    not(target = "thumbv6m-none-eabi"),
+    not(feature = "pico"),
     derive(Default, Serialize, Deserialize, Debug, PartialEq)
 )]
 pub enum MonitorSpec {
@@ -18,7 +18,7 @@ pub enum MonitorSpec {
 }
 
 #[cfg_attr(
-    not(target = "thumbv6m-none-eabi"),
+    not(feature = "pico"),
     derive(Serialize, Deserialize, Debug, PartialEq)
 )]
 pub struct ReportSpec {
@@ -27,7 +27,7 @@ pub struct ReportSpec {
 }
 
 #[cfg_attr(
-    not(target = "thumbv6m-none-eabi"),
+    not(feature = "pico"),
     derive(Default, Serialize, Deserialize)
 )]
 pub struct Config {
