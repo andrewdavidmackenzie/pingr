@@ -3,8 +3,7 @@ all: build
 build:
 	trunk build --release
 
-deploy:
-	trunk build --release
+deploy: build
 	wrangler pages deploy dist
 
 local:

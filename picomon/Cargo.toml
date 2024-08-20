@@ -4,6 +4,10 @@ version = "0.1.0"
 readme = "README.md"
 edition = "2021"
 
+[features]
+default = ["pico"]
+pico = []
+
 [dependencies]
 embassy-time = { version = "0.3.0", default-features = false, features = ["defmt", "defmt-timestamp-uptime"] }
 embassy-executor = { version = "0.6.0", default-features = false, features = ["task-arena-size-65536", "arch-cortex-m", "executor-thread", "executor-interrupt", "defmt", "integrated-timers"] }
@@ -14,19 +18,19 @@ cyw43 = { version = "0.1.0", default-features = false, features = ["defmt"] }
 cyw43-pio = { version = "0.1.0", default-features = false, features = ["defmt"] }
 panic-probe = { version = "0.3", default-features = false, features = ["print-defmt"] }
 portable-atomic = { version = "1.5", default-features = false, features = ["critical-section"] }
-defmt = { version = "0.3", default-features = false}
+defmt = { version = "0.3", default-features = false }
 defmt-rtt = { version = "0.4", default-features = false }
 cortex-m-rt = { version = "0.7.0", default-features = false }
-static_cell = { version = "2", default-features = false}
+static_cell = { version = "2", default-features = false }
 log = "0.4"
 
 # To convert device_id into hex for use as a string
-faster-hex = {  version = "0.9.0", default-features = false }
+faster-hex = { version = "0.9.0", default-features = false }
 
 # To make httpclient requests to the server, with TLS
-reqwless = { version="0.12.0", default-features = false, features = ["embedded-tls"]}
+reqwless = { version = "0.12.0", default-features = false, features = ["embedded-tls"] }
 # Needed to workaround an embassy dns server count bug
-smoltcp = { version = "0.11.0", default-features = false, features = ["dns-max-server-count-4"]}
+smoltcp = { version = "0.11.0", default-features = false, features = ["dns-max-server-count-4"] }
 
 [build-dependencies]
 # for reading config from a file in build.rs

@@ -14,6 +14,7 @@ path = "src/main.rs"
 [features]
 default = []
 ssids = ["wifiscanner"]
+pico = []
 
 [dependencies]
 data_model = { path = "../data_model" }
@@ -35,7 +36,7 @@ curl = { version = "~0.4", default-features = false, features = ["rustls"] }
 ctrlc = { version = "3.4.1", features = ["termination"] }
 
 # for installing as a system service
-service-manager = "0.6.0"
+service-manager = "0.7.1"
 
 # for scanning wifi and getting SSIDs visible
 wifiscanner = { version = "0.5.1", optional = true }
