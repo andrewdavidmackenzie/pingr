@@ -8,7 +8,7 @@
 //! updating `memory.x` ensures a rebuild of the application with the
 //! new memory settings.
 
-use std::env;
+use std::{env, io};
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -115,7 +115,7 @@ fn generate_config(config: config::Config, filename: &str, ssid: SsidSpec) {
     file.write_all(b";").unwrap();
 }
 
-fn main() {
+fn main() -> io::Result<()> {
     // Put `memory.x` in our output directory and ensure it's on the linker search path.
     let out = &PathBuf::from(env::var_os("OUT_DIR").unwrap());
     File::create(out.join("memory.x"))
@@ -129,6 +129,8 @@ fn main() {
     // here, we ensure the build script is only re-run when
     // `memory.x` is changed.
     println!("cargo:rerun-if-changed=memory.x");
+    println!("cargo:rerun-if-changed=../{}", SSID_FILE_NAME);
+    println!("cargo:rerun-if-changed=../{}", CONFIG_FILE_NAME);
 
     println!("cargo:rustc-link-arg-bins=--nmagic");
     println!("cargo:rustc-link-arg-bins=-Tlink.x");
@@ -137,7 +139,7 @@ fn main() {
 
     // Generate a pico_config::Config struct for picomon from the monitor.toml file
     let config_file_path =
-        config::find_config_file(CONFIG_FILE_NAME).expect("Could not find monitor.toml file");
+        config::find_config_file(CONFIG_FILE_NAME)?;
     let config = config::read_config(&config_file_path).unwrap();
     // rebuild if ../monitor.toml changes
     println!("cargo:rerun-if-changed=../monitor.toml");
@@ -150,4 +152,6 @@ fn main() {
     let ssid_spec = config::read_ssid(&ssid_path).unwrap_or(SsidSpec::default());
 
     generate_config(config, "config.rs", ssid_spec);
+
+    Ok(())
 }
