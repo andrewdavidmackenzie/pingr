@@ -51,13 +51,10 @@ people report that rsync may also work.
 
 ## Seeing output from Pico
 
-Add a USB Modem (not USB HD mounted) Pi Pico as a USB HD device, so
-that I can then copy files to it without rebooting with the BOOTSEL pressed
+Use `minicom` on the usbmodem device that should appear in `/dev` by invoking its
+setup with `minicom --setup`
 
-- stty -f /dev/cu.usbmodem14301 1200
-
-Use `minicom` on the usbmodem device that should appear in /dev.
-You should see the log output on the terminal.
+Then run `minicom` in a separate terminal window, and you should see then the log output.
 
 ## GDB (not confirmed)
 
