@@ -30,7 +30,7 @@ faster-hex = { version = "0.10.0", default-features = false }
 # To make httpclient requests to the server, with TLS
 reqwless = { version = "0.12.0", default-features = false, features = ["embedded-tls"] }
 # Needed to workaround an embassy dns server count bug
-smoltcp = { version = "0.11.0", default-features = false, features = ["dns-max-server-count-4"] }
+smoltcp = { version = "0.12.0", default-features = false, features = ["dns-max-server-count-4"] }
 
 [build-dependencies]
 # for reading config from a file in build.rs
